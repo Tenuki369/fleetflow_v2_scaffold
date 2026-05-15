@@ -1,0 +1,253 @@
+// FleetFlow TMS v2 — Prisma schema
+// Multi-tenant: every domain table carries orgId and is indexed on (orgId, createdAt).
+// Row-level isolation is enforced at the Prisma client layer via a tenancy extension.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  DISPATCHER
+  DRIVER
+  ACCOUNTING
+}
+
+enum LoadStatus {
+  AVAILABLE
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  INVOICED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum DocumentKind {
+  BOL
+  POD
+  RATE_CON
+  INVOICE
+  OTHER
+}
+
+model Org {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  loads       Load[]
+  customers   Customer[]
+  drivers     Driver[]
+  trucks      Truck[]
+  documents   Document[]
+  invoices    Invoice[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  id     String @id @default(cuid())
+  orgId  String
+  userId String
+  role   Role
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgId, userId])
+  @@index([orgId, createdAt])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  contact   String?
+  email     String?
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  loads Load[]
+
+  @@index([orgId, createdAt])
+  @@index([orgId, name])
+}
+
+model Driver {
+  id            String   @id @default(cuid())
+  orgId         String
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  licenseNumber String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  org     Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  loads   Load[]
+  truck   Truck?  @relation(fields: [truckId], references: [id])
+  truckId String?
+
+  @@index([orgId, createdAt])
+  @@index([orgId, active])
+}
+
+model Truck {
+  id         String   @id @default(cuid())
+  orgId      String
+  unitNumber String
+  vin        String?
+  plate      String?
+  make       String?
+  model      String?
+  year       Int?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  org     Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  drivers Driver[]
+  loads   Load[]
+
+  @@unique([orgId, unitNumber])
+  @@index([orgId, createdAt])
+}
+
+model Load {
+  id              String     @id @default(cuid())
+  orgId           String
+  referenceNumber String
+  status          LoadStatus @default(AVAILABLE)
+
+  customerId String?
+  driverId   String?
+  truckId    String?
+
+  origin      String
+  destination String
+  pickupAt    DateTime
+  deliverBy   DateTime
+
+  rateCents Int
+  miles     Int?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org       Org        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer  Customer?  @relation(fields: [customerId], references: [id])
+  driver    Driver?    @relation(fields: [driverId], references: [id])
+  truck     Truck?     @relation(fields: [truckId], references: [id])
+  documents Document[]
+  invoice   Invoice?
+
+  @@unique([orgId, referenceNumber])
+  @@index([orgId, createdAt])
+  @@index([orgId, status])
+  @@index([orgId, driverId])
+  @@index([orgId, pickupAt])
+}
+
+model Document {
+  id        String       @id @default(cuid())
+  orgId     String
+  loadId    String
+  kind      DocumentKind
+  fileName  String
+  s3Key     String
+  sizeBytes Int?
+  mimeType  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  load Load @relation(fields: [loadId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([orgId, loadId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  orgId       String
+  loadId      String        @unique
+  number      String
+  status      InvoiceStatus @default(DRAFT)
+  amountCents Int
+  issuedAt    DateTime?
+  dueAt       DateTime?
+  paidAt      DateTime?
+  stripeId    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  load Load @relation(fields: [loadId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, number])
+  @@index([orgId, createdAt])
+  @@index([orgId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  orgId      String
+  userId     String?
+  entityType String
+  entityId   String
+  action     String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  org  Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@index([orgId, entityType, entityId])
+}
+
+// Stripe webhook idempotency record. The webhook handler INSERTs the event ID;
+// the unique constraint makes replays a no-op without needing app-level locks.
+model StripeEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+}
+
