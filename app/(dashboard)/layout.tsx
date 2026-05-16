@@ -12,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <nav className="flex items-center gap-6 text-sm text-slate-600">
             <Link href="/dispatch" className="hover:text-slate-900">Dispatch</Link>
             <Link href="/loads" className="hover:text-slate-900">Loads</Link>
+            <Link href="/directory" className="hover:text-slate-900">Directory</Link>
             <Link href="/invoices" className="hover:text-slate-900">Invoices</Link>
             <UserButton />
           </nav>

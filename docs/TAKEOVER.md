@@ -25,3 +25,8 @@ The v2 scaffold is the source of truth because it contains the runnable Next.js 
 3. Confirm required services: Postgres, Clerk, S3/R2, Stripe, Sentry, email, analytics.
 4. Decide whether the old design collateral files belong in the app repo or should move to a separate product-docs repo.
 5. Build the next MVP surface: loads CRUD, driver workflow, document upload, invoicing, and customer onboarding.
+
+## Release checkpoints
+
+- Launch gates now live in `docs/GO_LIVE_CHECKPOINTS.md`.
+- Every feature slice should clear test, validation, performance, and QA checkpoints before staging promotion.

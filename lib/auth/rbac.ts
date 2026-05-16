@@ -1,6 +1,12 @@
 import { Role } from "@prisma/client";
 
-export type Resource = "load" | "driver" | "truck" | "invoice" | "user";
+export type Resource =
+  | "load"
+  | "customer"
+  | "driver"
+  | "truck"
+  | "invoice"
+  | "user";
 export type Action = "read" | "create" | "update" | "delete";
 
 type Matrix = Record<Role, Record<Resource, Action[]>>;
@@ -8,39 +14,44 @@ type Matrix = Record<Role, Record<Resource, Action[]>>;
 // Permission matrix. Role X can perform actions Y on resource Z.
 const MATRIX: Matrix = {
   OWNER: {
-    load:    ["read", "create", "update", "delete"],
-    driver:  ["read", "create", "update", "delete"],
-    truck:   ["read", "create", "update", "delete"],
+    load: ["read", "create", "update", "delete"],
+    customer: ["read", "create", "update", "delete"],
+    driver: ["read", "create", "update", "delete"],
+    truck: ["read", "create", "update", "delete"],
     invoice: ["read", "create", "update", "delete"],
-    user:    ["read", "create", "update", "delete"],
+    user: ["read", "create", "update", "delete"],
   },
   ADMIN: {
-    load:    ["read", "create", "update", "delete"],
-    driver:  ["read", "create", "update", "delete"],
-    truck:   ["read", "create", "update", "delete"],
+    load: ["read", "create", "update", "delete"],
+    customer: ["read", "create", "update", "delete"],
+    driver: ["read", "create", "update", "delete"],
+    truck: ["read", "create", "update", "delete"],
     invoice: ["read", "create", "update", "delete"],
-    user:    ["read", "create", "update"],
+    user: ["read", "create", "update"],
   },
   DISPATCHER: {
-    load:    ["read", "create", "update"],
-    driver:  ["read", "update"],
-    truck:   ["read", "update"],
+    load: ["read", "create", "update"],
+    customer: ["read", "create", "update"],
+    driver: ["read", "update"],
+    truck: ["read", "update"],
     invoice: ["read"],
-    user:    ["read"],
+    user: ["read"],
   },
   DRIVER: {
-    load:    ["read", "update"], // limited to status updates on assigned loads — enforce at handler.
-    driver:  ["read"],
-    truck:   ["read"],
+    load: ["read", "update"], // Limited to assigned-load updates in handlers.
+    customer: ["read"],
+    driver: ["read"],
+    truck: ["read"],
     invoice: [],
-    user:    ["read"],
+    user: ["read"],
   },
   ACCOUNTING: {
-    load:    ["read"],
-    driver:  ["read"],
-    truck:   ["read"],
+    load: ["read"],
+    customer: ["read"],
+    driver: ["read"],
+    truck: ["read"],
     invoice: ["read", "create", "update"],
-    user:    ["read"],
+    user: ["read"],
   },
 };
 
@@ -56,6 +67,7 @@ export function hasPermission(user: AuthUser, action: Action, resource: Resource
 
 export class ForbiddenError extends Error {
   status = 403;
+
   constructor(message = "Forbidden") {
     super(message);
     this.name = "ForbiddenError";
