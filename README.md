@@ -99,3 +99,4 @@ prisma/
 ## Multi-tenancy
 
 Every domain row carries `orgId`. The tenancy Prisma extension in `lib/auth/tenancy.ts` injects `orgId` into every query before it hits Postgres — handlers should never construct a raw Prisma client. `getOrgContext()` is the only sanctioned entry point for resolving the active org from a request.
+Staging trigger
