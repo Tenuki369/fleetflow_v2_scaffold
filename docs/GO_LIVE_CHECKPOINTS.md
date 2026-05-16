@@ -15,8 +15,10 @@ Every major slice moves through the same gates before it is considered launch-re
 
 ## Gate 1: Test checkpoints
 
+- `npm run test:unit`
 - `npm run build`
 - `npm exec tsc -- --noEmit`
+- `npm run release:check`
 - Seeded local smoke pass against:
   - `/dispatch`
   - `/loads`
@@ -33,7 +35,7 @@ Every major slice moves through the same gates before it is considered launch-re
   - `GET/POST /api/drivers`
   - `GET/POST /api/trucks`
 
-Exit rule: no type errors, no build errors, and no handler returning unexpected 500s under seeded data.
+Exit rule: no unit test failures, no type errors, no build errors, and no handler returning unexpected 500s under seeded data.
 
 ## Gate 2: Validation checkpoints
 
@@ -110,6 +112,7 @@ Exit rule: there is an owner for launch-day monitoring and a fallback plan if so
 
 - Completed:
   - build/typecheck baseline
+  - first automated unit harness for RBAC, load status derivation, invoice number base generation, and document key validation
   - load create/edit workflow
   - loads and invoices workspaces
   - customer/driver/truck directory foundation

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoadStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
+import { LoadStatusActions } from "@/components/loads/LoadStatusActions";
 import { LoadStatusPill } from "@/components/loads/LoadStatusPill";
 
 export const dynamic = "force-dynamic";
@@ -41,21 +42,24 @@ export default async function LoadsPage({
     ? (status as LoadStatus)
     : undefined;
 
-  const loads = await ctx.db.load.findMany({
-    where: selectedStatus ? { status: selectedStatus } : {},
-    orderBy: [{ pickupAt: "desc" }, { createdAt: "desc" }],
-    include: {
-      customer: { select: { name: true } },
-      driver: { select: { firstName: true, lastName: true } },
-      truck: { select: { unitNumber: true } },
-    },
-    take: 100,
-  });
-
-  const counts = STATUS_ORDER.map((currentStatus) => ({
-    status: currentStatus,
-    count: loads.filter((load) => load.status === currentStatus).length,
-  }));
+  const [loads, counts] = await Promise.all([
+    ctx.db.load.findMany({
+      where: selectedStatus ? { status: selectedStatus } : {},
+      orderBy: [{ pickupAt: "desc" }, { createdAt: "desc" }],
+      include: {
+        customer: { select: { name: true } },
+        driver: { select: { firstName: true, lastName: true } },
+        truck: { select: { unitNumber: true } },
+      },
+      take: 100,
+    }),
+    Promise.all(
+      STATUS_ORDER.map(async (currentStatus) => ({
+        status: currentStatus,
+        count: await ctx.db.load.count({ where: { status: currentStatus } }),
+      })),
+    ),
+  ]);
   const totalRevenue = loads.reduce((sum, load) => sum + load.rateCents, 0);
 
   return (
@@ -121,6 +125,7 @@ export default async function LoadsPage({
               <th className="px-4 py-3">Driver</th>
               <th className="px-4 py-3">Truck</th>
               <th className="px-4 py-3 text-right">Rate</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -154,6 +159,9 @@ export default async function LoadsPage({
                 </td>
                 <td className="px-4 py-3 text-right font-medium text-slate-900">
                   {formatMoney(load.rateCents)}
+                </td>
+                <td className="px-4 py-3">
+                  <LoadStatusActions loadId={load.id} status={load.status} />
                 </td>
               </tr>
             ))}

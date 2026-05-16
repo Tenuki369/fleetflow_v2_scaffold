@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { LoadStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
+import { LoadStatusActions } from "@/components/loads/LoadStatusActions";
 import { LoadStatusPill } from "@/components/loads/LoadStatusPill";
 
 export const dynamic = "force-dynamic";
@@ -48,14 +50,14 @@ export default async function DispatchPage() {
     orderBy: [{ status: "asc" }, { pickupAt: "asc" }],
     include: {
       customer: { select: { name: true } },
-      driver:   { select: { firstName: true, lastName: true } },
-      truck:    { select: { unitNumber: true } },
+      driver: { select: { firstName: true, lastName: true } },
+      truck: { select: { unitNumber: true } },
     },
   });
 
   const grouped = STATUS_ORDER.map((status) => ({
     status,
-    loads: (loads as any[]).filter((l: any) => l.status === status),
+    loads: loads.filter((load) => load.status === status),
   }));
 
   return (
@@ -69,7 +71,7 @@ export default async function DispatchPage() {
               month: "long",
               day: "numeric",
             })}{" "}
-            — {loads.length} load{loads.length === 1 ? "" : "s"}
+            - {loads.length} load{loads.length === 1 ? "" : "s"}
           </p>
         </div>
       </header>
@@ -103,34 +105,56 @@ export default async function DispatchPage() {
                         <th className="px-4 py-3">Driver</th>
                         <th className="px-4 py-3">Truck</th>
                         <th className="px-4 py-3 text-right">Rate</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {(rows as any[]).map((l: any) => (
-                        <tr key={l.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium text-slate-900">
-                            {l.referenceNumber}
+                      {rows.map((load) => (
+                        <tr key={load.id} className="hover:bg-slate-50">
+                          <td className="p-0 font-medium text-slate-900">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {load.referenceNumber}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
-                            {l.customer?.name ?? "—"}
+                          <td className="p-0 text-slate-700">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {load.customer?.name ?? "-"}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
-                            {l.origin} <span className="text-slate-400">→</span>{" "}
-                            {l.destination}
+                          <td className="p-0 text-slate-700">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {load.origin} <span className="text-slate-400">to</span>{" "}
+                              {load.destination}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
-                            {formatTime(l.pickupAt)}
+                          <td className="p-0 text-slate-700">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {formatTime(load.pickupAt)}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
-                            {l.driver
-                              ? `${l.driver.firstName} ${l.driver.lastName}`
-                              : "—"}
+                          <td className="p-0 text-slate-700">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {load.driver
+                                ? `${load.driver.firstName} ${load.driver.lastName}`
+                                : "-"}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-700">
-                            {l.truck?.unitNumber ?? "—"}
+                          <td className="p-0 text-slate-700">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {load.truck?.unitNumber ?? "-"}
+                            </Link>
                           </td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-900">
-                            {formatMoney(l.rateCents)}
+                          <td className="p-0 text-right font-medium text-slate-900">
+                            <Link href={`/loads/${load.id}`} className="block px-4 py-3">
+                              {formatMoney(load.rateCents)}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3">
+                            <LoadStatusActions
+                              loadId={load.id}
+                              status={load.status}
+                              compact
+                            />
                           </td>
                         </tr>
                       ))}

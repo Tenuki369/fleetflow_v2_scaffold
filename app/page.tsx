@@ -1,6 +1,25 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import { getOrgContext } from "@/lib/auth/tenancy";
+
+export default async function Home() {
+  const { userId } = await auth();
+
+  if (userId) {
+    try {
+      await getOrgContext();
+      redirect("/dispatch");
+    } catch (error) {
+      if (error instanceof Error && error.message === "NO_MEMBERSHIP") {
+        redirect("/onboarding");
+      }
+
+      throw error;
+    }
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-24">
       <h1 className="text-4xl font-bold tracking-tight">FleetFlow TMS</h1>
