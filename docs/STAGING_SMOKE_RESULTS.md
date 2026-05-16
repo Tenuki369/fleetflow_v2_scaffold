@@ -97,3 +97,4 @@ Note: the app uses Clerk, not NextAuth. `NEXTAUTH_URL` and `NEXTAUTH_SECRET` are
    - `npm run db:deploy && npm run build`
 4. Trigger a preview deployment from `codex/merge-fleetflow-handoff`.
 5. Re-run the five smoke flows in `docs/STAGING_RUNBOOK.md` and append the actual preview URL, timestamps, and pass/fail results here.
+Staging trigger
