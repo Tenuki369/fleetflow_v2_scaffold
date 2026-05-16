@@ -1,70 +1,37 @@
-// Seed data — short and operator-flavored
-const LOADS = [
-  { id:'L-1042', customer:'Midwest Foods Co.',     origin:'Joliet, IL',        dest:'Cleveland, OH',     pickup:'05/12', deliver:'05/14', miles:340, rate:2450, status:'In Transit', driver:'A. Rivera',  truck:'#T-1042', bol:true,  pod:true,  rateCon:true,  invoiced:false, dock:'08:30', deliverDock:'14:00' },
-  { id:'L-1043', customer:'Heartland Steel',       origin:'Indianapolis, IN',  dest:'Kansas City, MO',   pickup:'05/11', deliver:'05/13', miles:484, rate:1875, status:'Delivered',  driver:'M. Coombs',  truck:'#T-1038', bol:true,  pod:true,  rateCon:true,  invoiced:false, dock:'06:00', deliverDock:'18:00' },
-  { id:'L-1044', customer:'PrairieGrain LLC',      origin:'Des Moines, IA',    dest:'St. Louis, MO',     pickup:'05/14', deliver:'05/15', miles:344, rate:1620, status:'Dispatched', driver:'C. Brooks',  truck:'#T-1051', bol:false, pod:false, rateCon:true,  invoiced:false, dock:'07:30', deliverDock:'15:00' },
-  { id:'L-1045', customer:'NorCo Auto Parts',      origin:'Detroit, MI',       dest:'Nashville, TN',     pickup:'05/15', deliver:'05/16', miles:533, rate:2280, status:'Pending',    driver:'—',          truck:'—',       bol:false, pod:false, rateCon:true,  invoiced:false, dock:'09:00', deliverDock:'17:00' },
-  { id:'L-1046', customer:'Acme Distribution',     origin:'Milwaukee, WI',     dest:'Minneapolis, MN',   pickup:'05/12', deliver:'05/13', miles:336, rate:1490, status:'Delivered',  driver:'J. Patel',   truck:'#T-1029', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'05:30', deliverDock:'12:00' },
-  { id:'L-1047', customer:'Riverside Lumber',      origin:'Green Bay, WI',     dest:'Chicago, IL',       pickup:'05/13', deliver:'05/14', miles:209, rate:1140, status:'Invoiced',   driver:'K. Nguyen',  truck:'#T-1044', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'10:00', deliverDock:'19:00' },
-  { id:'L-1048', customer:'Great Plains Beverages',origin:'Omaha, NE',         dest:'Denver, CO',        pickup:'05/14', deliver:'05/15', miles:540, rate:2150, status:'In Transit', driver:'R. Walker',  truck:'#T-1033', bol:true,  pod:false, rateCon:true,  invoiced:false, dock:'04:00', deliverDock:'20:00' },
-  { id:'L-1049', customer:'Lakeshore Logistics',   origin:'Toledo, OH',        dest:'Buffalo, NY',       pickup:'05/10', deliver:'05/12', miles:280, rate:1380, status:'Paid',       driver:'D. Chen',    truck:'#T-1019', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'08:00', deliverDock:'13:30' },
-];
-
-const DRIVERS = [
-  { name:'A. Rivera',  cdl:'CDL-849221', phone:'(312) 555-0148', expiry:'2026/08/14', medical:'2026/05/02', status:'Active',   truck:'#T-1042' },
-  { name:'M. Coombs',  cdl:'CDL-721104', phone:'(815) 555-0210', expiry:'2026/05/30', medical:'2026/06/19', status:'Active',   truck:'#T-1038' },
-  { name:'C. Brooks',  cdl:'CDL-665382', phone:'(708) 555-0421', expiry:'2026/07/30', medical:'2026/11/04', status:'Active',   truck:'#T-1051' },
-  { name:'J. Patel',   cdl:'CDL-552019', phone:'(414) 555-0177', expiry:'2024/01/12', medical:'2024/03/22', status:'On Leave', truck:'—' },
-  { name:'K. Nguyen',  cdl:'CDL-980442', phone:'(773) 555-0612', expiry:'2026/09/18', medical:'2026/08/03', status:'Active',   truck:'#T-1044' },
-  { name:'R. Walker',  cdl:'CDL-340187', phone:'(402) 555-0398', expiry:'2026/06/04', medical:'2025/12/29', status:'Active',   truck:'#T-1033' },
-  { name:'D. Chen',    cdl:'CDL-118023', phone:'(716) 555-0844', expiry:'2026/06/22', medical:'2026/02/16', status:'Active',   truck:'#T-1019' },
-];
-
-const TRUCKS = [
-  { unit:'#T-1042', vin:'1FUJA6CK57L', make:'Freightliner Cascadia', year:2022, miles:284120, lastService:'2026/02/18', status:'On Load',        driver:'A. Rivera' },
-  { unit:'#T-1038', vin:'1FUJA6CK22L', make:'Freightliner Cascadia', year:2021, miles:341802, lastService:'2026/01/30', status:'Available',      driver:'M. Coombs' },
-  { unit:'#T-1051', vin:'1FUJA6CK91L', make:'Freightliner Cascadia', year:2023, miles:118445, lastService:'2026/03/01', status:'On Load',        driver:'C. Brooks' },
-  { unit:'#T-1029', vin:'1FUJA6CK04L', make:'Kenworth T680',         year:2020, miles:412006, lastService:'2026/03/04', status:'In Shop',        driver:'—' },
-  { unit:'#T-1044', vin:'1FUJA6CK63L', make:'Freightliner Cascadia', year:2022, miles:201338, lastService:'2025/12/22', status:'On Load',        driver:'K. Nguyen' },
-  { unit:'#T-1033', vin:'1FUJA6CK19L', make:'Peterbilt 579',         year:2021, miles:298502, lastService:'2026/02/05', status:'On Load',        driver:'R. Walker' },
-  { unit:'#T-1019', vin:'1FUJA6CK85L', make:'Freightliner Cascadia', year:2019, miles:498117, lastService:'2025/11/14', status:'Out of Service', driver:'—' },
-];
-
-// AI Match — candidate loads from DAT/Truckstop board for empty trucks
-const MATCHES = [
-  {
-    truck:'#T-1038', driver:'M. Coombs', from:'Kansas City, MO', hosLeft:8.5,
-    candidates:[
-      { id:'DAT-883201', broker:'Coyote Logistics', origin:'Kansas City, MO', dest:'Chicago, IL',     miles:512, rate:1980, rpm:3.87, deadhead:12, fit:96, posted:'12 min ago', reason:'On the way home · 12mi deadhead · driver has run Coyote 9× clean' },
-      { id:'DAT-883415', broker:'CH Robinson',      origin:'Lawrence, KS',    dest:'Indianapolis, IN', miles:594, rate:2140, rpm:3.60, deadhead:42, fit:88, posted:'34 min ago', reason:'Strong lane, longer deadhead, broker pays NET-15' },
-      { id:'DAT-883102', broker:'Echo Global',      origin:'Topeka, KS',      dest:'Memphis, TN',      miles:476, rate:1620, rpm:3.40, deadhead:68, fit:71, posted:'1 hr ago',  reason:'Heavier deadhead, lower margin, lane back home is thin' },
-    ],
-  },
-];
-
-// Compliance — items the copilot watches
-const COMPLIANCE = [
-  { kind:'Driver',    subject:'J. Patel',  detail:'CDL expired 01/12/2024 · 487 days overdue',  severity:'critical', due:-487, action:'Move to On Leave · reassign L-1045' },
-  { kind:'Driver',    subject:'M. Coombs', detail:'CDL expires 05/30/2026 · 16 days',           severity:'warn',     due:16,   action:'Schedule DMV renewal · text driver' },
-  { kind:'Truck',     subject:'#T-1019',   detail:'DOT annual inspection due 06/14/2026',       severity:'warn',     due:31,   action:'Book inspection · already in shop' },
-  { kind:'IFTA',      subject:'Q2 2026',   detail:'Filing window opens 07/01 · 11k mi logged',  severity:'info',     due:48,   action:'Pre-populate jurisdictional miles' },
-  { kind:'Clearing-', subject:'Pre-trip',  detail:'New hire query for C. Brooks · 24h window',  severity:'warn',     due:1,    action:'Send query · sign with consent' },
-  { kind:'Driver',    subject:'D. Chen',   detail:'Medical cert expires 02/16/2027',            severity:'ok',       due:278,  action:'No action — within window' },
-];
-
-// Pay — same-day settlement candidates and history
-const PAYOUTS = [
-  { id:'PAY-2614', loadId:'L-1046', driver:'J. Patel',    carrier:'NorthShore Trucking LLC', amount:1490, fee:14.90, net:1475.10, rail:'RTP', eta:'today · 16:00 ET', when:'pending',  podAt:'05/13 12:18', riskFlag:null },
-  { id:'PAY-2613', loadId:'L-1042', driver:'A. Rivera',   carrier:'NorthShore Trucking LLC', amount:2450, fee:24.50, net:2425.50, rail:'RTP', eta:'today · 16:00 ET', when:'pending',  podAt:'05/13 14:24', riskFlag:'Broker rate-con mismatch · $50' },
-  { id:'PAY-2612', loadId:'L-1049', driver:'D. Chen',     carrier:'NorthShore Trucking LLC', amount:1380, fee:13.80, net:1366.20, rail:'RTP', eta:'paid 05/12 09:14', when:'paid',     podAt:'05/12 08:30', riskFlag:null },
-  { id:'PAY-2611', loadId:'L-1047', driver:'K. Nguyen',   carrier:'NorthShore Trucking LLC', amount:1140, fee:11.40, net:1128.60, rail:'ACH', eta:'paid 05/13 11:02', when:'paid',     podAt:'05/13 09:55', riskFlag:null },
-  { id:'PAY-2610', loadId:'L-1043', driver:'M. Coombs',   carrier:'NorthShore Trucking LLC', amount:1875, fee:18.75, net:1856.25, rail:'RTP', eta:'paid 05/11 17:48', when:'paid',     podAt:'05/11 17:30', riskFlag:null },
-];
-
-const STATUS_TO_CLASS = {
-  'Pending':'p-pending','Dispatched':'p-disp','In Transit':'p-transit','Delivered':'p-deliv','Invoiced':'p-inv','Paid':'p-paid',
-  'Available':'p-avail','On Load':'p-load','In Shop':'p-shop','Out of Service':'p-oos',
-  'Active':'p-active','On Leave':'p-leave','Terminated':'p-term',
+// Lucide-style icons as inline JSX (1.5–1.8 stroke, currentColor)
+const _i = (paths) => (p={}) => (
+  <svg viewBox="0 0 24 24" width={p.size||16} height={p.size||16} fill="none" stroke="currentColor" strokeWidth={p.sw||1.8} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    {paths}
+  </svg>
+);
+const I = {
+  Dashboard: _i(<><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></>),
+  Package:   _i(<><path d="M16.5 9.4L7.55 4.24"/><path d="M21 8.6v6.8a2.05 2.05 0 0 1-1 1.84l-7.5 4.6a2.13 2.13 0 0 1-2 0L3 17.24A2.05 2.05 0 0 1 2 15.4V8.6a2.05 2.05 0 0 1 1-1.84l7.5-4.6a2.13 2.13 0 0 1 2 0L20 6.76A2.05 2.05 0 0 1 21 8.6z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></>),
+  Users:     _i(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>),
+  Truck:     _i(<><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></>),
+  Building:  _i(<><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></>),
+  File:      _i(<><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></>),
+  Plus:      _i(<><path d="M12 5v14M5 12h14"/></>),
+  Search:    _i(<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>),
+  Pencil:    _i(<><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></>),
+  Trash:     _i(<><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>),
+  Alert:     _i(<><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></>),
+  Check:     _i(<><path d="M20 6L9 17l-5-5"/></>),
+  X:         _i(<><path d="M18 6 6 18M6 6l12 12"/></>),
+  Pin:       _i(<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>),
+  Filter:    _i(<><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></>),
+  Phone:     _i(<><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></>),
+  Chevron:   _i(<><path d="m9 18 6-6-6-6"/></>),
+  Dollar:    _i(<><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>),
+  TrendUp:   _i(<><path d="M22 7 13.5 15.5l-5-5L2 17"/><path d="M16 7h6v6"/></>),
+  Camera:    _i(<><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></>),
+  Sparkle:   _i(<><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="2.5"/></>),
+  Shield:    _i(<><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></>),
+  Bank:      _i(<><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></>),
+  Bolt:      _i(<><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></>),
+  ArrowRight:_i(<><path d="M5 12h14M13 6l6 6-6 6"/></>),
+  Clock:     _i(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
+  Map:       _i(<><path d="M9 4 3 6v15l6-2 6 2 6-2V4l-6 2-6-2zM9 4v15M15 6v15"/></>),
+  Settings:  _i(<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>),
 };
-
-Object.assign(window, { LOADS, DRIVERS, TRUCKS, MATCHES, COMPLIANCE, PAYOUTS, STATUS_TO_CLASS });
+window.I = I;

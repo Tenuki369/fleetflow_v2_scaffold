@@ -1,218 +1,70 @@
-// Shared components — Header, PageHead, Status, ExpiryCell, Stats, LoadDrawer, Toast
-const { useState, useMemo, useEffect, useRef } = React;
+// Seed data — short and operator-flavored
+const LOADS = [
+  { id:'L-1042', customer:'Midwest Foods Co.',     origin:'Joliet, IL',        dest:'Cleveland, OH',     pickup:'05/12', deliver:'05/14', miles:340, rate:2450, status:'In Transit', driver:'A. Rivera',  truck:'#T-1042', bol:true,  pod:true,  rateCon:true,  invoiced:false, dock:'08:30', deliverDock:'14:00' },
+  { id:'L-1043', customer:'Heartland Steel',       origin:'Indianapolis, IN',  dest:'Kansas City, MO',   pickup:'05/11', deliver:'05/13', miles:484, rate:1875, status:'Delivered',  driver:'M. Coombs',  truck:'#T-1038', bol:true,  pod:true,  rateCon:true,  invoiced:false, dock:'06:00', deliverDock:'18:00' },
+  { id:'L-1044', customer:'PrairieGrain LLC',      origin:'Des Moines, IA',    dest:'St. Louis, MO',     pickup:'05/14', deliver:'05/15', miles:344, rate:1620, status:'Dispatched', driver:'C. Brooks',  truck:'#T-1051', bol:false, pod:false, rateCon:true,  invoiced:false, dock:'07:30', deliverDock:'15:00' },
+  { id:'L-1045', customer:'NorCo Auto Parts',      origin:'Detroit, MI',       dest:'Nashville, TN',     pickup:'05/15', deliver:'05/16', miles:533, rate:2280, status:'Pending',    driver:'—',          truck:'—',       bol:false, pod:false, rateCon:true,  invoiced:false, dock:'09:00', deliverDock:'17:00' },
+  { id:'L-1046', customer:'Acme Distribution',     origin:'Milwaukee, WI',     dest:'Minneapolis, MN',   pickup:'05/12', deliver:'05/13', miles:336, rate:1490, status:'Delivered',  driver:'J. Patel',   truck:'#T-1029', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'05:30', deliverDock:'12:00' },
+  { id:'L-1047', customer:'Riverside Lumber',      origin:'Green Bay, WI',     dest:'Chicago, IL',       pickup:'05/13', deliver:'05/14', miles:209, rate:1140, status:'Invoiced',   driver:'K. Nguyen',  truck:'#T-1044', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'10:00', deliverDock:'19:00' },
+  { id:'L-1048', customer:'Great Plains Beverages',origin:'Omaha, NE',         dest:'Denver, CO',        pickup:'05/14', deliver:'05/15', miles:540, rate:2150, status:'In Transit', driver:'R. Walker',  truck:'#T-1033', bol:true,  pod:false, rateCon:true,  invoiced:false, dock:'04:00', deliverDock:'20:00' },
+  { id:'L-1049', customer:'Lakeshore Logistics',   origin:'Toledo, OH',        dest:'Buffalo, NY',       pickup:'05/10', deliver:'05/12', miles:280, rate:1380, status:'Paid',       driver:'D. Chen',    truck:'#T-1019', bol:true,  pod:true,  rateCon:true,  invoiced:true,  dock:'08:00', deliverDock:'13:30' },
+];
 
-const STATUS_DOT = {
-  'Pending':'d-pending','Dispatched':'d-disp','In Transit':'d-transit','Delivered':'d-deliv','Invoiced':'d-inv','Paid':'d-paid',
-  'Available':'d-avail','On Load':'d-load','In Shop':'d-shop','Out of Service':'d-oos',
-  'Active':'d-active','On Leave':'d-leave','Terminated':'d-term',
+const DRIVERS = [
+  { name:'A. Rivera',  cdl:'CDL-849221', phone:'(312) 555-0148', expiry:'2026/08/14', medical:'2026/05/02', status:'Active',   truck:'#T-1042' },
+  { name:'M. Coombs',  cdl:'CDL-721104', phone:'(815) 555-0210', expiry:'2026/05/30', medical:'2026/06/19', status:'Active',   truck:'#T-1038' },
+  { name:'C. Brooks',  cdl:'CDL-665382', phone:'(708) 555-0421', expiry:'2026/07/30', medical:'2026/11/04', status:'Active',   truck:'#T-1051' },
+  { name:'J. Patel',   cdl:'CDL-552019', phone:'(414) 555-0177', expiry:'2024/01/12', medical:'2024/03/22', status:'On Leave', truck:'—' },
+  { name:'K. Nguyen',  cdl:'CDL-980442', phone:'(773) 555-0612', expiry:'2026/09/18', medical:'2026/08/03', status:'Active',   truck:'#T-1044' },
+  { name:'R. Walker',  cdl:'CDL-340187', phone:'(402) 555-0398', expiry:'2026/06/04', medical:'2025/12/29', status:'Active',   truck:'#T-1033' },
+  { name:'D. Chen',    cdl:'CDL-118023', phone:'(716) 555-0844', expiry:'2026/06/22', medical:'2026/02/16', status:'Active',   truck:'#T-1019' },
+];
+
+const TRUCKS = [
+  { unit:'#T-1042', vin:'1FUJA6CK57L', make:'Freightliner Cascadia', year:2022, miles:284120, lastService:'2026/02/18', status:'On Load',        driver:'A. Rivera' },
+  { unit:'#T-1038', vin:'1FUJA6CK22L', make:'Freightliner Cascadia', year:2021, miles:341802, lastService:'2026/01/30', status:'Available',      driver:'M. Coombs' },
+  { unit:'#T-1051', vin:'1FUJA6CK91L', make:'Freightliner Cascadia', year:2023, miles:118445, lastService:'2026/03/01', status:'On Load',        driver:'C. Brooks' },
+  { unit:'#T-1029', vin:'1FUJA6CK04L', make:'Kenworth T680',         year:2020, miles:412006, lastService:'2026/03/04', status:'In Shop',        driver:'—' },
+  { unit:'#T-1044', vin:'1FUJA6CK63L', make:'Freightliner Cascadia', year:2022, miles:201338, lastService:'2025/12/22', status:'On Load',        driver:'K. Nguyen' },
+  { unit:'#T-1033', vin:'1FUJA6CK19L', make:'Peterbilt 579',         year:2021, miles:298502, lastService:'2026/02/05', status:'On Load',        driver:'R. Walker' },
+  { unit:'#T-1019', vin:'1FUJA6CK85L', make:'Freightliner Cascadia', year:2019, miles:498117, lastService:'2025/11/14', status:'Out of Service', driver:'—' },
+];
+
+// AI Match — candidate loads from DAT/Truckstop board for empty trucks
+const MATCHES = [
+  {
+    truck:'#T-1038', driver:'M. Coombs', from:'Kansas City, MO', hosLeft:8.5,
+    candidates:[
+      { id:'DAT-883201', broker:'Coyote Logistics', origin:'Kansas City, MO', dest:'Chicago, IL',     miles:512, rate:1980, rpm:3.87, deadhead:12, fit:96, posted:'12 min ago', reason:'On the way home · 12mi deadhead · driver has run Coyote 9× clean' },
+      { id:'DAT-883415', broker:'CH Robinson',      origin:'Lawrence, KS',    dest:'Indianapolis, IN', miles:594, rate:2140, rpm:3.60, deadhead:42, fit:88, posted:'34 min ago', reason:'Strong lane, longer deadhead, broker pays NET-15' },
+      { id:'DAT-883102', broker:'Echo Global',      origin:'Topeka, KS',      dest:'Memphis, TN',      miles:476, rate:1620, rpm:3.40, deadhead:68, fit:71, posted:'1 hr ago',  reason:'Heavier deadhead, lower margin, lane back home is thin' },
+    ],
+  },
+];
+
+// Compliance — items the copilot watches
+const COMPLIANCE = [
+  { kind:'Driver',    subject:'J. Patel',  detail:'CDL expired 01/12/2024 · 487 days overdue',  severity:'critical', due:-487, action:'Move to On Leave · reassign L-1045' },
+  { kind:'Driver',    subject:'M. Coombs', detail:'CDL expires 05/30/2026 · 16 days',           severity:'warn',     due:16,   action:'Schedule DMV renewal · text driver' },
+  { kind:'Truck',     subject:'#T-1019',   detail:'DOT annual inspection due 06/14/2026',       severity:'warn',     due:31,   action:'Book inspection · already in shop' },
+  { kind:'IFTA',      subject:'Q2 2026',   detail:'Filing window opens 07/01 · 11k mi logged',  severity:'info',     due:48,   action:'Pre-populate jurisdictional miles' },
+  { kind:'Clearing-', subject:'Pre-trip',  detail:'New hire query for C. Brooks · 24h window',  severity:'warn',     due:1,    action:'Send query · sign with consent' },
+  { kind:'Driver',    subject:'D. Chen',   detail:'Medical cert expires 02/16/2027',            severity:'ok',       due:278,  action:'No action — within window' },
+];
+
+// Pay — same-day settlement candidates and history
+const PAYOUTS = [
+  { id:'PAY-2614', loadId:'L-1046', driver:'J. Patel',    carrier:'NorthShore Trucking LLC', amount:1490, fee:14.90, net:1475.10, rail:'RTP', eta:'today · 16:00 ET', when:'pending',  podAt:'05/13 12:18', riskFlag:null },
+  { id:'PAY-2613', loadId:'L-1042', driver:'A. Rivera',   carrier:'NorthShore Trucking LLC', amount:2450, fee:24.50, net:2425.50, rail:'RTP', eta:'today · 16:00 ET', when:'pending',  podAt:'05/13 14:24', riskFlag:'Broker rate-con mismatch · $50' },
+  { id:'PAY-2612', loadId:'L-1049', driver:'D. Chen',     carrier:'NorthShore Trucking LLC', amount:1380, fee:13.80, net:1366.20, rail:'RTP', eta:'paid 05/12 09:14', when:'paid',     podAt:'05/12 08:30', riskFlag:null },
+  { id:'PAY-2611', loadId:'L-1047', driver:'K. Nguyen',   carrier:'NorthShore Trucking LLC', amount:1140, fee:11.40, net:1128.60, rail:'ACH', eta:'paid 05/13 11:02', when:'paid',     podAt:'05/13 09:55', riskFlag:null },
+  { id:'PAY-2610', loadId:'L-1043', driver:'M. Coombs',   carrier:'NorthShore Trucking LLC', amount:1875, fee:18.75, net:1856.25, rail:'RTP', eta:'paid 05/11 17:48', when:'paid',     podAt:'05/11 17:30', riskFlag:null },
+];
+
+const STATUS_TO_CLASS = {
+  'Pending':'p-pending','Dispatched':'p-disp','In Transit':'p-transit','Delivered':'p-deliv','Invoiced':'p-inv','Paid':'p-paid',
+  'Available':'p-avail','On Load':'p-load','In Shop':'p-shop','Out of Service':'p-oos',
+  'Active':'p-active','On Leave':'p-leave','Terminated':'p-term',
 };
-function Status({ s }) {
-  return <span className="stat-mark"><span className={`d ${STATUS_DOT[s]||''}`}/>{s}</span>;
-}
 
-function Header({ tab, setTab, wedges }) {
-  const items = [
-    { id:'dispatch',  label:'Dispatch' },
-    { id:'match',     label:'Match',      badge: wedges.match      ? { text:'AI',   cls:'ok'   } : null, hidden: !wedges.match },
-    { id:'compliance',label:'Compliance', badge: wedges.compliance ? { text:'2',    cls:''     } : null, hidden: !wedges.compliance },
-    { id:'pay',       label:'Pay',        badge: wedges.pay        ? { text:'$2k',  cls:'warn' } : null, hidden: !wedges.pay },
-    { id:'roster',    label:'Roster' },
-    { id:'capture',   label:'Capture' },
-  ];
-  return (
-    <header className="bar">
-      <div className="brand">
-        <span className="word">FleetFlow</span>
-        <span className="div"/>
-        <span className="scope">NorthShore Trucking · 22 trucks</span>
-      </div>
-      <nav className="tabs">
-        {items.filter(i => !i.hidden).map(i => (
-          <button key={i.id} aria-current={tab===i.id?'page':undefined} onClick={()=>setTab(i.id)}>
-            {i.label}
-            {i.badge && <span className={`badge ${i.badge.cls||''}`}>{i.badge.text}</span>}
-          </button>
-        ))}
-      </nav>
-      <div className="session">
-        <span className="mono">Thu · May 14 · 14:08 CT</span>
-        <span className="who"><span className="dot">DR</span></span>
-      </div>
-    </header>
-  );
-}
-
-function PageHead({ index, title, titleEm, sub, actions }) {
-  return (
-    <div className="page-head">
-      <div className="meta">
-        <div className="index">{index}</div>
-        <h1>{title}{titleEm && <em> {titleEm}</em>}</h1>
-        <div className="sub">{sub}</div>
-      </div>
-      <div className="actions">{actions}</div>
-    </div>
-  );
-}
-
-function ExpiryCell({ dateStr }) {
-  const today = new Date('2026-05-14');
-  const d = new Date(dateStr);
-  const days = Math.round((d - today) / (1000*60*60*24));
-  const fmt = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-  let cls = '';
-  if (days <= 0) cls = 'bad';
-  else if (days <= 30) cls = 'warn';
-  return (
-    <span className={`expiry ${cls}`}>
-      <span className="mono">{fmt}</span>
-      {cls && <I.Alert size={12} sw={2}/>}
-    </span>
-  );
-}
-
-function Stats({ items }) {
-  return (
-    <div className="overview">
-      {items.map((s,i)=>(
-        <div className="stat" key={i}>
-          <div className="lbl">{s.lbl}</div>
-          <div className="val">{s.val}</div>
-          <div className={`sub ${s.cls||''}`}>{s.sub}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Toast({ msg, onDone }) {
-  useEffect(() => {
-    if (!msg) return;
-    const t = setTimeout(onDone, 2400);
-    return () => clearTimeout(t);
-  }, [msg]);
-  return (
-    <div className={`toast ${msg ? 'show' : ''}`} role="status">
-      <I.Check size={14} sw={2.4}/>
-      <span>{msg}</span>
-    </div>
-  );
-}
-
-// ---------- Load detail drawer with Same-day Pay ----------
-function LoadDrawer({ load, onClose, wedges, onPay }) {
-  const open = !!load;
-  if (!load) return (
-    <>
-      <div className={`scrim ${open?'open':''}`} onClick={onClose}/>
-      <aside className={`drawer ${open?'open':''}`}/>
-    </>
-  );
-
-  const rpm = (load.rate / load.miles).toFixed(2);
-  const eligibleForPay = wedges.pay && load.pod && load.bol && load.rateCon && !['Paid'].includes(load.status);
-  const fee = load.rate * 0.01;
-  const net = load.rate - fee;
-
-  return (
-    <>
-      <div className={`scrim ${open?'open':''}`} onClick={onClose}/>
-      <aside className={`drawer ${open?'open':''}`}>
-        <div className="drawer-pad">
-          <button className="close" onClick={onClose}><I.X size={16} sw={1.6}/></button>
-          <div className="eyebrow">Load {load.id} · <Status s={load.status}/></div>
-          <h2 style={{marginTop:8}}>{load.origin.split(',')[0]}<br/><em>to {load.dest.split(',')[0]}.</em></h2>
-          <div className="lead">{load.customer} · {load.miles.toLocaleString()} miles, ${rpm}/mi</div>
-
-          {/* Same-day pay card */}
-          {eligibleForPay && (
-            <div className="paycard">
-              <div className="pay-head">
-                <div className="ttl">Pay <em>now,</em> not in 30 days.</div>
-                <div className="amt">${net.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-              </div>
-              <div className="pay-rail">
-                <span className="pill">RTP</span>
-                <span>Funds land in <strong style={{color:'var(--ink)'}}>~90 seconds</strong></span>
-                <span className="eta">No factoring fee</span>
-              </div>
-              <div className="pay-cta">
-                <button className="btn btn-moss" onClick={() => onPay(load)}>
-                  <I.Bolt size={14} sw={1.8}/>Pay carrier now
-                </button>
-                <button className="btn btn-ghost">Invoice broker · NET-30</button>
-              </div>
-              <div className="muted" style={{marginTop:10}}>
-                ${fee.toFixed(2)} platform fee · vs ~${(load.rate * 0.03).toFixed(0)} typical Quick Pay
-              </div>
-            </div>
-          )}
-
-          <section>
-            <h3>Route</h3>
-            <div className="leg">
-              <div className="gut">
-                <div className="dotL" style={{background:'var(--moss)'}}/>
-                <div className="line"/>
-              </div>
-              <div>
-                <div className="city">{load.origin}</div>
-                <div className="when">Pickup · <span className="mono">{load.pickup}</span> · {load.dock} dock-in</div>
-              </div>
-              <div className="miles">{load.miles.toLocaleString()} mi</div>
-            </div>
-            <div className="leg">
-              <div className="gut">
-                <div className="dotL" style={{background:'var(--klint)'}}/>
-              </div>
-              <div>
-                <div className="city">{load.dest}</div>
-                <div className="when">Deliver · <span className="mono">{load.deliver}</span> · {load.deliverDock} window</div>
-              </div>
-              <div className="miles">{(load.miles/55).toFixed(1)} hrs</div>
-            </div>
-          </section>
-
-          <section>
-            <h3>Assignment</h3>
-            <div className="kv">
-              <div className="k">Driver</div><div className="v">{load.driver}</div>
-              <div className="k">Truck</div><div className="v mono">{load.truck}</div>
-              <div className="k">Rate</div><div className="v mono">${load.rate.toLocaleString()}</div>
-              <div className="k">Rate / mile</div><div className="v mono">${rpm}</div>
-            </div>
-          </section>
-
-          <section>
-            <h3>Documents</h3>
-            <div style={{display:'flex', flexDirection:'column'}}>
-              <div className="doc-row">
-                <span>Rate confirmation</span>
-                <span className={`right ${load.rateCon?'ok':'pend'}`}>{load.rateCon?'received':'pending'}</span>
-              </div>
-              <div className="doc-row">
-                <span>Bill of Lading</span>
-                <span className={`right ${load.bol?'ok':'pend'}`}>{load.bol?'attached':'awaiting driver'}</span>
-              </div>
-              <div className="doc-row">
-                <span>Proof of Delivery</span>
-                <span className={`right ${load.pod?'ok':'pend'}`}>{load.pod?'attached':'pending'}</span>
-              </div>
-              <div className="doc-row">
-                <span>Invoice</span>
-                <span className={`right ${load.invoiced?'ok':'due'}`}>{load.invoiced?'sent':'auto-draft ready'}</span>
-              </div>
-            </div>
-          </section>
-
-          <div className="cta">
-            <button className="btn btn-primary"><I.Phone size={14}/>Call driver</button>
-            <button className="btn btn-ghost">Edit load</button>
-          </div>
-        </div>
-      </aside>
-    </>
-  );
-}
-
-Object.assign(window, { Status, Header, PageHead, ExpiryCell, Stats, Toast, LoadDrawer });
+Object.assign(window, { LOADS, DRIVERS, TRUCKS, MATCHES, COMPLIANCE, PAYOUTS, STATUS_TO_CLASS });
