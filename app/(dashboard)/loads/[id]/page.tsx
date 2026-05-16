@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { LoadEditor } from "@/components/loads/LoadEditor";
+import { LoadDocumentsPanel } from "@/components/loads/LoadDocumentsPanel";
 import { getOrgContext } from "@/lib/auth/tenancy";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function EditLoadPage({
   const { id } = await params;
   const ctx = await getOrgContext();
 
-  const [load, customers, drivers, trucks] = await Promise.all([
+  const [load, customers, drivers, trucks, documents] = await Promise.all([
     ctx.db.load.findUnique({
       where: { id },
       select: {
@@ -51,6 +52,19 @@ export default async function EditLoadPage({
       where: { active: true },
       orderBy: { unitNumber: "asc" },
       select: { id: true, unitNumber: true },
+      take: 100,
+    }),
+    ctx.db.document.findMany({
+      where: { loadId: id },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        id: true,
+        kind: true,
+        fileName: true,
+        sizeBytes: true,
+        mimeType: true,
+        createdAt: true,
+      },
       take: 100,
     }),
   ]);
@@ -96,6 +110,16 @@ export default async function EditLoadPage({
           trucks={trucks.map((truck) => ({
             id: truck.id,
             label: truck.unitNumber,
+          }))}
+        />
+      </div>
+
+      <div className="mt-6">
+        <LoadDocumentsPanel
+          loadId={load.id}
+          documents={documents.map((document) => ({
+            ...document,
+            createdAt: document.createdAt.toISOString(),
           }))}
         />
       </div>
