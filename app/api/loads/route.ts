@@ -3,26 +3,13 @@ import { z } from "zod";
 import { LoadStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { requirePermission, ForbiddenError } from "@/lib/auth/rbac";
+import { deriveLoadStatusForWrite, loadWriteSchema } from "@/lib/loads";
 
 const listQuerySchema = z.object({
   status: z.nativeEnum(LoadStatus).optional(),
   driverId: z.string().cuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
-});
-
-const createBodySchema = z.object({
-  referenceNumber: z.string().min(1).max(64),
-  customerId: z.string().cuid().optional(),
-  driverId: z.string().cuid().optional(),
-  truckId: z.string().cuid().optional(),
-  origin: z.string().min(1),
-  destination: z.string().min(1),
-  pickupAt: z.coerce.date(),
-  deliverBy: z.coerce.date(),
-  rateCents: z.number().int().nonnegative(),
-  miles: z.number().int().nonnegative().optional(),
-  notes: z.string().max(2000).optional(),
 });
 
 function errorResponse(err: unknown) {
@@ -96,7 +83,7 @@ export async function POST(req: NextRequest) {
     requirePermission(ctx, "create", "load");
 
     const json = await req.json().catch(() => null);
-    const parsed = createBodySchema.safeParse(json);
+    const parsed = loadWriteSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid body", details: parsed.error.flatten() },
@@ -115,7 +102,7 @@ export async function POST(req: NextRequest) {
       data: {
         ...parsed.data,
         orgId: ctx.orgId,
-        status: parsed.data.driverId ? LoadStatus.ASSIGNED : LoadStatus.AVAILABLE,
+        status: deriveLoadStatusForWrite(null, parsed.data.driverId),
       },
       include: {
         customer: { select: { id: true, name: true } },

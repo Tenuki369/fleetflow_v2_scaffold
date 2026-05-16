@@ -52,9 +52,9 @@ export default async function LoadsPage({
     take: 100,
   });
 
-  const counts = STATUS_ORDER.map((s) => ({
-    status: s,
-    count: loads.filter((load) => load.status === s).length,
+  const counts = STATUS_ORDER.map((currentStatus) => ({
+    status: currentStatus,
+    count: loads.filter((load) => load.status === currentStatus).length,
   }));
   const totalRevenue = loads.reduce((sum, load) => sum + load.rateCents, 0);
 
@@ -74,6 +74,12 @@ export default async function LoadsPage({
           <p className="mt-1 text-xl font-semibold text-slate-900">
             {formatMoney(totalRevenue)}
           </p>
+          <Link
+            href="/loads/new"
+            className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          >
+            Create load
+          </Link>
         </div>
       </header>
 
@@ -88,17 +94,17 @@ export default async function LoadsPage({
         >
           All
         </Link>
-        {counts.map(({ status, count }) => (
+        {counts.map(({ status: currentStatus, count }) => (
           <Link
-            key={status}
-            href={`/loads?status=${status}`}
+            key={currentStatus}
+            href={`/loads?status=${currentStatus}`}
             className={`rounded-md px-3 py-2 text-sm ring-1 ring-inset ${
-              selectedStatus === status
+              selectedStatus === currentStatus
                 ? "bg-slate-900 text-white ring-slate-900"
                 : "bg-white text-slate-600 ring-slate-200 hover:text-slate-900"
             }`}
           >
-            {status.replace("_", " ").toLowerCase()} · {count}
+            {currentStatus.replace("_", " ").toLowerCase()} - {count}
           </Link>
         ))}
       </div>
@@ -121,7 +127,9 @@ export default async function LoadsPage({
             {loads.map((load) => (
               <tr key={load.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">
-                  {load.referenceNumber}
+                  <Link href={`/loads/${load.id}`} className="hover:underline">
+                    {load.referenceNumber}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">
                   <LoadStatusPill status={load.status} />
