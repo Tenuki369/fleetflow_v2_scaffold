@@ -2,6 +2,8 @@
 
 This is the release spine for taking FleetFlow from "feature work in progress" to a production launch that can survive real operations.
 
+For the step-by-step QA execution order, use [docs/QA_RUNBOOK.md](C:\Users\1\Documents\Codex\2026-05-15\i-need-you-to-takeover-this\fleetflow_v2_scaffold\docs\QA_RUNBOOK.md).
+
 ## Release cadence
 
 Every major slice moves through the same gates before it is considered launch-ready:
@@ -15,9 +17,9 @@ Every major slice moves through the same gates before it is considered launch-re
 
 ## Gate 1: Test checkpoints
 
-- `npm run test:unit`
-- `npm run build`
-- `npm exec tsc -- --noEmit`
+- `npm run release:preflight`
+- `npm run qa:quick`
+- `npm run qa:launch`
 - `npm run release:check`
 - Seeded local smoke pass against:
   - `/dispatch`
@@ -31,6 +33,7 @@ Every major slice moves through the same gates before it is considered launch-re
   - `GET/POST /api/loads`
   - `GET/PATCH /api/loads/[id]`
   - `GET/POST /api/loads/[id]/invoice`
+  - `PATCH /api/invoices/[id]`
   - `GET/POST /api/customers`
   - `GET/POST /api/drivers`
   - `GET/POST /api/trucks`
@@ -52,6 +55,7 @@ Exit rule: no unit test failures, no type errors, no build errors, and no handle
   - duplicate load reference numbers blocked per org
   - relationship IDs must belong to the active org before write
   - optional relationships remain nullable without breaking forms
+  - invoice status changes only follow allowed transitions
 
 Exit rule: data integrity holds under normal usage and obvious bad inputs.
 
@@ -76,7 +80,9 @@ Exit rule: dispatcher-facing views stay comfortably usable at small production s
   - create load using those records
   - edit load
   - move load through status flow
-  - verify invoice visibility
+  - generate invoice
+  - move invoice through at least one valid status transition
+  - upload and download a document when storage is enabled in the target environment
 - Empty states verified.
 - Validation errors shown in UI for bad form input.
 - Table views remain readable on laptop-width screens.
@@ -92,9 +98,10 @@ Exit rule: a dispatcher can complete the main operational flow without guidance.
   - Stripe
   - storage bucket
 - Prisma migrations applied successfully.
-- Seed/bootstrap process creates an initial org and owner path safely.
+- `GET /api/health` returns healthy against the deployed staging URL.
+- First-org onboarding creates an initial org and owner membership safely.
 - Document presign flow tested against real storage.
-- Stripe webhook tested with replay/idempotency.
+- Stripe webhook tested with replay and idempotency.
 
 Exit rule: staging behaves like production, not like a local demo.
 
@@ -111,19 +118,24 @@ Exit rule: there is an owner for launch-day monitoring and a fallback plan if so
 ## Current status
 
 - Completed:
-  - build/typecheck baseline
-  - first automated unit harness for RBAC, load status derivation, invoice number base generation, and document key validation
-  - load create/edit workflow
-  - loads and invoices workspaces
-  - customer/driver/truck directory foundation
-  - load document upload workflow
+  - build and typecheck baseline
+  - automated unit coverage for RBAC, drivers, loads, invoices, and document key validation
+  - local seeded demo data path for smoke testing
+  - dispatch workspace
+  - loads create, edit, and status workflow
+  - invoices workspace
+  - customer, driver, and truck directory workflow
+  - document upload and download flow
   - draft invoice generation from delivered loads
+  - invoice status transition workflow
+  - first-org onboarding and owner bootstrap path
   - auth redirect target corrected to `/dispatch`
+  - cross-org relationship write validation on load writes
 - In progress:
-  - onboarding/bootstrap path for the first real org
-  - cross-org relationship write validation
-  - invoice send/pay/void lifecycle actions
-- Not started:
   - staging shakeout
   - production monitoring
-  - launch-day rollback checklist
+  - credentialed Stripe webhook verification
+  - credentialed storage verification
+- Not started:
+  - launch-day monitoring and operator handoff note
+  - rollback rehearsal against a real staging snapshot

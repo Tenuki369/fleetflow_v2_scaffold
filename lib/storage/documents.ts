@@ -5,6 +5,11 @@ import { randomUUID } from "crypto";
 const UPLOAD_TTL_SECONDS = 60 * 5;
 const DOWNLOAD_TTL_SECONDS = 60 * 60;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const STORAGE_REQUIRED_ENV_VARS = [
+  "S3_BUCKET",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+] as const;
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -34,6 +39,60 @@ function s3(): S3Client {
 function bucket(): string {
   if (!_bucket) s3();
   return _bucket!;
+}
+
+export interface DocumentStorageDiagnostics {
+  configured: boolean;
+  provider: "aws-s3" | "cloudflare-r2-compatible";
+  region: string;
+  bucketConfigured: boolean;
+  endpointConfigured: boolean;
+  endpointHost: string | null;
+  pathStyle: boolean;
+  credentialsConfigured: boolean;
+  missingEnv: string[];
+  clientInitialization: "ok" | "error" | "skipped";
+  clientInitializationError?: string;
+}
+
+function getEndpointHost(endpoint: string | undefined): string | null {
+  if (!endpoint) return null;
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return "invalid";
+  }
+}
+
+export function getDocumentStorageDiagnostics(): DocumentStorageDiagnostics {
+  const missingEnv = STORAGE_REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
+  const endpoint = process.env.S3_ENDPOINT;
+  const diagnostics: DocumentStorageDiagnostics = {
+    configured: missingEnv.length === 0,
+    provider: endpoint ? "cloudflare-r2-compatible" : "aws-s3",
+    region: process.env.AWS_REGION ?? "us-east-1",
+    bucketConfigured: Boolean(process.env.S3_BUCKET),
+    endpointConfigured: Boolean(endpoint),
+    endpointHost: getEndpointHost(endpoint),
+    pathStyle: Boolean(endpoint),
+    credentialsConfigured:
+      Boolean(process.env.AWS_ACCESS_KEY_ID) &&
+      Boolean(process.env.AWS_SECRET_ACCESS_KEY),
+    missingEnv: [...missingEnv],
+    clientInitialization: "skipped",
+  };
+
+  if (diagnostics.configured) {
+    try {
+      s3();
+      diagnostics.clientInitialization = "ok";
+    } catch (error) {
+      diagnostics.clientInitialization = "error";
+      diagnostics.clientInitializationError = (error as Error).message;
+    }
+  }
+
+  return diagnostics;
 }
 
 export interface UploadUrlInput {
