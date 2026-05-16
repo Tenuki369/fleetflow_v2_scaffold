@@ -15,8 +15,8 @@ Every major slice moves through the same gates before it is considered launch-re
 
 ## Gate 1: Test checkpoints
 
-- `npm exec tsc -- --noEmit`
 - `npm run build`
+- `npm exec tsc -- --noEmit`
 - Seeded local smoke pass against:
   - `/dispatch`
   - `/loads`
@@ -48,6 +48,7 @@ Exit rule: no type errors, no build errors, and no handler returning unexpected 
   - load delivery date cannot precede pickup date
   - duplicate truck unit numbers blocked per org
   - duplicate load reference numbers blocked per org
+  - relationship IDs must belong to the active org before write
   - optional relationships remain nullable without breaking forms
 
 Exit rule: data integrity holds under normal usage and obvious bad inputs.
@@ -114,8 +115,10 @@ Exit rule: there is an owner for launch-day monitoring and a fallback plan if so
   - customer/driver/truck directory foundation
   - load document upload workflow
   - draft invoice generation from delivered loads
+  - auth redirect target corrected to `/dispatch`
 - In progress:
   - onboarding/bootstrap path for the first real org
+  - cross-org relationship write validation
   - invoice send/pay/void lifecycle actions
 - Not started:
   - staging shakeout

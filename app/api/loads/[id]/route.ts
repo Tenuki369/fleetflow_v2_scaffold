@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { ForbiddenError, requirePermission } from "@/lib/auth/rbac";
 import { deriveLoadStatusForWrite, loadWriteSchema } from "@/lib/loads";
+import { validateOrgRelations } from "@/lib/relations";
 
 function errorResponse(err: unknown) {
   if (err instanceof ForbiddenError) {
@@ -72,6 +73,15 @@ export async function PATCH(
         { error: "deliverBy must be on or after pickupAt" },
         { status: 422 },
       );
+    }
+
+    const relationError = await validateOrgRelations(ctx.db, [
+      { field: "customerId", id: parsed.data.customerId },
+      { field: "driverId", id: parsed.data.driverId },
+      { field: "truckId", id: parsed.data.truckId },
+    ]);
+    if (relationError) {
+      return NextResponse.json({ error: relationError }, { status: 422 });
     }
 
     const load = await ctx.db.load.update({

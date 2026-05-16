@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { ForbiddenError, requirePermission } from "@/lib/auth/rbac";
 import { driverCreateSchema } from "@/lib/directory";
+import { validateOrgRelations } from "@/lib/relations";
 
 function errorResponse(err: unknown) {
   if (err instanceof ForbiddenError) {
@@ -49,6 +50,13 @@ export async function POST(req: NextRequest) {
         { error: "Invalid body", details: parsed.error.flatten() },
         { status: 400 },
       );
+    }
+
+    const relationError = await validateOrgRelations(ctx.db, [
+      { field: "truckId", id: parsed.data.truckId },
+    ]);
+    if (relationError) {
+      return NextResponse.json({ error: relationError }, { status: 422 });
     }
 
     const driver = await ctx.db.driver.create({

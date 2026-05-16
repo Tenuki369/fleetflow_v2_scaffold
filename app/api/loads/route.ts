@@ -4,6 +4,7 @@ import { LoadStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { requirePermission, ForbiddenError } from "@/lib/auth/rbac";
 import { deriveLoadStatusForWrite, loadWriteSchema } from "@/lib/loads";
+import { validateOrgRelations } from "@/lib/relations";
 
 const listQuerySchema = z.object({
   status: z.nativeEnum(LoadStatus).optional(),
@@ -96,6 +97,15 @@ export async function POST(req: NextRequest) {
         { error: "deliverBy must be on or after pickupAt" },
         { status: 422 },
       );
+    }
+
+    const relationError = await validateOrgRelations(ctx.db, [
+      { field: "customerId", id: parsed.data.customerId },
+      { field: "driverId", id: parsed.data.driverId },
+      { field: "truckId", id: parsed.data.truckId },
+    ]);
+    if (relationError) {
+      return NextResponse.json({ error: relationError }, { status: 422 });
     }
 
     const load = await ctx.db.load.create({
