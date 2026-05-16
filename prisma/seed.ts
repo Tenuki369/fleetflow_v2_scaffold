@@ -5,7 +5,7 @@
  * memberships, two customers, two drivers, two trucks, and ten loads spanning
  * every status. Idempotent — safe to re-run.
  */
-import { PrismaClient, Role, LoadStatus } from "@prisma/client";
+import { InvoiceStatus, LoadStatus, PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -97,7 +97,7 @@ async function main() {
     const deliver = new Date(pickup);
     deliver.setDate(deliver.getDate() + 1);
 
-    await prisma.load.upsert({
+    const load = await prisma.load.upsert({
       where: { orgId_referenceNumber: { orgId: org.id, referenceNumber: refNum } },
       create: {
         orgId: org.id,
@@ -115,6 +115,26 @@ async function main() {
       },
       update: {},
     });
+
+    if (status === LoadStatus.DELIVERED || status === LoadStatus.INVOICED) {
+      const issuedAt = new Date(deliver);
+      const dueAt = new Date(deliver);
+      dueAt.setDate(dueAt.getDate() + 30);
+
+      await prisma.invoice.upsert({
+        where: { loadId: load.id },
+        create: {
+          orgId: org.id,
+          loadId: load.id,
+          number: `INV-${refNum.replace("L-", "")}`,
+          status: status === LoadStatus.INVOICED ? InvoiceStatus.SENT : InvoiceStatus.DRAFT,
+          amountCents: load.rateCents,
+          issuedAt,
+          dueAt,
+        },
+        update: {},
+      });
+    }
   }
 
   console.log("Seeded org:", org.slug);
