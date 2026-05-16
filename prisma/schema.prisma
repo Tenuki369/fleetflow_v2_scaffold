@@ -72,6 +72,7 @@ model User {
 
   memberships Membership[]
   auditLogs   AuditLog[]
+  drivers     Driver[]
 }
 
 model Membership {
@@ -111,6 +112,7 @@ model Customer {
 model Driver {
   id            String   @id @default(cuid())
   orgId         String
+  userId        String?
   firstName     String
   lastName      String
   email         String?
@@ -121,12 +123,14 @@ model Driver {
   updatedAt     DateTime @updatedAt
 
   org     Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   loads   Load[]
   truck   Truck?  @relation(fields: [truckId], references: [id])
   truckId String?
 
   @@index([orgId, createdAt])
   @@index([orgId, active])
+  @@unique([orgId, userId])
 }
 
 model Truck {

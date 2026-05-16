@@ -74,8 +74,16 @@ async function main() {
     ].map((d, i) =>
       prisma.driver.upsert({
         where: { id: `seed-drv-${d.lastName.toLowerCase()}` },
-        create: { ...d, orgId: org.id, truckId: trucks[i]?.id, id: `seed-drv-${d.lastName.toLowerCase()}` },
-        update: {},
+        create: {
+          ...d,
+          orgId: org.id,
+          truckId: trucks[i]?.id,
+          userId: i === 0 ? driverUser.id : null,
+          id: `seed-drv-${d.lastName.toLowerCase()}`,
+        },
+        update: {
+          userId: i === 0 ? driverUser.id : null,
+        },
       }),
     ),
   );
