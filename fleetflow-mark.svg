@@ -1,0 +1,127 @@
+// FleetFlow Prototype — App composition + Tweaks
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "editorial",
+  "density": "comfortable",
+  "wedgeMatch": true,
+  "wedgeCompliance": true,
+  "wedgePay": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [tab, setTab] = useState('dispatch');
+  const [openedLoad, setOpenedLoad] = useState(null);
+  const [toast, setToast] = useState('');
+
+  // apply theme to <html> for CSS targeting + force repaint
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', t.theme);
+    document.documentElement.setAttribute('data-density', t.density);
+    // Forces a clean re-resolution of var() refs across the tree.
+    // Some browsers cache shorthand background: var() values until layout shifts.
+    const d = document.body.style.display;
+    document.body.style.display = 'none';
+    document.body.offsetHeight;
+    document.body.style.display = d;
+  }, [t.theme, t.density]);
+
+  const wedges = {
+    match:      t.wedgeMatch,
+    compliance: t.wedgeCompliance,
+    pay:        t.wedgePay,
+  };
+
+  // Auto-redirect off a hidden wedge tab
+  useEffect(() => {
+    if ((tab === 'match' && !wedges.match) ||
+        (tab === 'compliance' && !wedges.compliance) ||
+        (tab === 'pay' && !wedges.pay)) {
+      setTab('dispatch');
+    }
+  }, [tab, wedges.match, wedges.compliance, wedges.pay]);
+
+  const showToast = (msg) => setToast(msg);
+  const payLoad = (l) => {
+    showToast(`Paid $${(l.rate * 0.99).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} via RTP · ${l.driver}`);
+    setOpenedLoad(null);
+  };
+
+  let body;
+  switch (tab) {
+    case 'dispatch':   body = <DispatchScreen wedges={wedges} openLoad={setOpenedLoad} showToast={showToast}/>; break;
+    case 'match':      body = <DispatchScreen wedges={wedges} openLoad={setOpenedLoad} showToast={showToast}/>; break;
+    case 'compliance': body = <ComplianceScreen showToast={showToast}/>; break;
+    case 'pay':        body = <PayScreen showToast={showToast}/>; break;
+    case 'roster':     body = <RosterScreen/>; break;
+    case 'capture':    body = <CaptureScreen/>; break;
+    default:           body = <DispatchScreen wedges={wedges} openLoad={setOpenedLoad} showToast={showToast}/>;
+  }
+
+  return (
+    <>
+      <div className="frame">
+        <Header tab={tab} setTab={setTab} wedges={wedges}/>
+        {body}
+        <div className="page-foot">
+          <span>FleetFlow · NorthShore Trucking · v2.0 design partner</span>
+          <span>Sheet · {tab} · May 14, 2026</span>
+        </div>
+      </div>
+
+      <LoadDrawer
+        load={openedLoad}
+        onClose={()=>setOpenedLoad(null)}
+        wedges={wedges}
+        onPay={payLoad}
+      />
+
+      <Toast msg={toast} onDone={()=>setToast('')}/>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Look">
+          <TweakRadio
+            label="Theme"
+            value={t.theme}
+            onChange={(v)=>setTweak('theme', v)}
+            options={[
+              { value:'editorial', label:'Editorial' },
+              { value:'operator',  label:'Operator' },
+              { value:'night',     label:'Night' },
+            ]}
+          />
+          <TweakRadio
+            label="Density"
+            value={t.density}
+            onChange={(v)=>setTweak('density', v)}
+            options={[
+              { value:'comfortable', label:'Roomy' },
+              { value:'compact',     label:'Tight' },
+            ]}
+          />
+        </TweakSection>
+
+        <TweakSection label="Competitive wedges">
+          <TweakToggle
+            label="AI load matching"
+            value={t.wedgeMatch}
+            onChange={(v)=>setTweak('wedgeMatch', v)}
+          />
+          <TweakToggle
+            label="Compliance copilot"
+            value={t.wedgeCompliance}
+            onChange={(v)=>setTweak('wedgeCompliance', v)}
+          />
+          <TweakToggle
+            label="Same-day carrier pay"
+            value={t.wedgePay}
+            onChange={(v)=>setTweak('wedgePay', v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
