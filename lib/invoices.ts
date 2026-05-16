@@ -30,6 +30,32 @@ export interface InvoiceGenerationResult {
   created: boolean;
 }
 
+export class InvoiceNotFoundError extends Error {
+  status = 404;
+
+  constructor() {
+    super("Invoice not found");
+    this.name = "InvoiceNotFoundError";
+  }
+}
+
+export class InvoiceTransitionError extends Error {
+  status = 409;
+
+  constructor(from: InvoiceStatus, to: InvoiceStatus) {
+    super(`Cannot move invoice from ${from} to ${to}`);
+    this.name = "InvoiceTransitionError";
+  }
+}
+
+const INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT: [InvoiceStatus.SENT, InvoiceStatus.VOID],
+  SENT: [InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.VOID],
+  OVERDUE: [InvoiceStatus.PAID, InvoiceStatus.VOID],
+  PAID: [],
+  VOID: [],
+};
+
 function isUniqueConstraintError(err: unknown): boolean {
   return (
     !!err &&
@@ -54,6 +80,11 @@ export function invoiceNumberBase(referenceNumber: string): string {
     .slice(0, 48);
 
   return `INV-${sanitized || "LOAD"}`;
+}
+
+export function canTransitionInvoiceStatus(from: InvoiceStatus, to: InvoiceStatus): boolean {
+  if (from === to) return true;
+  return INVOICE_TRANSITIONS[from].includes(to);
 }
 
 async function nextInvoiceNumber(ctx: OrgContext, referenceNumber: string): Promise<string> {
@@ -139,4 +170,43 @@ export async function generateInvoiceForLoad(
   }
 
   throw new Error("Unable to create invoice");
+}
+
+export async function updateInvoiceStatus(
+  ctx: OrgContext,
+  invoiceId: string,
+  status: InvoiceStatus,
+): Promise<Invoice> {
+  const current = await ctx.db.invoice.findUnique({ where: { id: invoiceId } });
+  if (!current) throw new InvoiceNotFoundError();
+
+  if (!canTransitionInvoiceStatus(current.status, status)) {
+    throw new InvoiceTransitionError(current.status, status);
+  }
+
+  if (current.status === status) return current;
+
+  const now = new Date();
+  const invoice = await ctx.db.invoice.update({
+    where: { id: invoiceId },
+    data: {
+      status,
+      issuedAt: status === InvoiceStatus.SENT && !current.issuedAt ? now : current.issuedAt,
+      paidAt: status === InvoiceStatus.PAID ? now : current.paidAt,
+    },
+  });
+
+  await ctx.db.auditLog.create({
+    data: {
+      orgId: ctx.orgId,
+      userId: ctx.userId,
+      entityType: "Invoice",
+      entityId: invoice.id,
+      action: `status:${current.status}->${invoice.status}`,
+      before: { status: current.status },
+      after: { status: invoice.status },
+    },
+  });
+
+  return invoice;
 }

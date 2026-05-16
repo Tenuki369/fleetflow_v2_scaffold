@@ -3,6 +3,7 @@
 import { InvoiceStatus, LoadStatus } from "@prisma/client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { InvoiceStatusActions } from "@/components/invoices/InvoiceStatusActions";
 
 type InvoiceSummary = {
   id: string;
@@ -129,14 +130,18 @@ export function LoadInvoicePanel({
       ) : null}
 
       <div className="mt-5 flex justify-end">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={!canGenerate || isPending}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {invoice ? "Refresh invoice" : isPending ? "Generating..." : "Generate invoice"}
-        </button>
+        {invoice ? (
+          <InvoiceStatusActions invoiceId={invoice.id} status={invoice.status} />
+        ) : (
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!canGenerate || isPending}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPending ? "Generating..." : "Generate invoice"}
+          </button>
+        )}
       </div>
     </section>
   );

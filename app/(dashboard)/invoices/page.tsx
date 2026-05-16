@@ -1,5 +1,6 @@
 import { InvoiceStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
+import { InvoiceStatusActions } from "@/components/invoices/InvoiceStatusActions";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,7 @@ export default async function InvoicesPage() {
                 <th className="px-4 py-3">Route</th>
                 <th className="px-4 py-3">Due</th>
                 <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -135,6 +137,9 @@ export default async function InvoicesPage() {
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-slate-900">
                     {formatMoney(invoice.amountCents)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <InvoiceStatusActions invoiceId={invoice.id} status={invoice.status} />
                   </td>
                 </tr>
               ))}

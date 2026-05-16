@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { invoiceNumberBase } from "../lib/invoices";
+import { InvoiceStatus } from "@prisma/client";
+import { canTransitionInvoiceStatus, invoiceNumberBase } from "../lib/invoices";
 
 describe("invoiceNumberBase", () => {
   it("normalizes load references into invoice numbers", () => {
@@ -18,5 +19,26 @@ describe("invoiceNumberBase", () => {
 
     expect(base).toBe("INV-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789-EXTRA-LONG");
     expect(base.replace("INV-", "")).toHaveLength(48);
+  });
+});
+
+describe("canTransitionInvoiceStatus", () => {
+  it("allows the normal accounting lifecycle", () => {
+    expect(canTransitionInvoiceStatus(InvoiceStatus.DRAFT, InvoiceStatus.SENT)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.SENT, InvoiceStatus.PAID)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.SENT, InvoiceStatus.OVERDUE)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.OVERDUE, InvoiceStatus.PAID)).toBe(true);
+  });
+
+  it("allows voiding open invoices but not paid invoices", () => {
+    expect(canTransitionInvoiceStatus(InvoiceStatus.DRAFT, InvoiceStatus.VOID)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.SENT, InvoiceStatus.VOID)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.OVERDUE, InvoiceStatus.VOID)).toBe(true);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.PAID, InvoiceStatus.VOID)).toBe(false);
+  });
+
+  it("blocks reopening terminal states", () => {
+    expect(canTransitionInvoiceStatus(InvoiceStatus.PAID, InvoiceStatus.SENT)).toBe(false);
+    expect(canTransitionInvoiceStatus(InvoiceStatus.VOID, InvoiceStatus.SENT)).toBe(false);
   });
 });
