@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
     const load = await ctx.db.load.create({
       data: {
         ...parsed.data,
+        orgId: ctx.orgId,
         status: parsed.data.driverId ? LoadStatus.ASSIGNED : LoadStatus.AVAILABLE,
       },
       include: {
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest) {
 
     await ctx.db.auditLog.create({
       data: {
+        orgId: ctx.orgId,
         userId: ctx.userId,
         entityType: "Load",
         entityId: load.id,

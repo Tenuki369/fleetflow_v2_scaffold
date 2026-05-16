@@ -100,6 +100,7 @@ export async function PATCH(
 
     await ctx.db.auditLog.create({
       data: {
+        orgId: ctx.orgId,
         userId: ctx.userId,
         entityType: "Load",
         entityId: updated.id,
