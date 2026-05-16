@@ -28,6 +28,7 @@ Every major slice moves through the same gates before it is considered launch-re
   - `GET /api/health`
   - `GET/POST /api/loads`
   - `GET/PATCH /api/loads/[id]`
+  - `GET/POST /api/loads/[id]/invoice`
   - `GET/POST /api/customers`
   - `GET/POST /api/drivers`
   - `GET/POST /api/trucks`
@@ -111,10 +112,11 @@ Exit rule: there is an owner for launch-day monitoring and a fallback plan if so
   - load create/edit workflow
   - loads and invoices workspaces
   - customer/driver/truck directory foundation
+  - load document upload workflow
+  - draft invoice generation from delivered loads
 - In progress:
-  - document upload workflow
-  - invoice generation workflow
   - onboarding/bootstrap path for the first real org
+  - invoice send/pay/void lifecycle actions
 - Not started:
   - staging shakeout
   - production monitoring

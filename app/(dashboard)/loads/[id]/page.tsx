@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { LoadEditor } from "@/components/loads/LoadEditor";
 import { LoadDocumentsPanel } from "@/components/loads/LoadDocumentsPanel";
+import { LoadInvoicePanel } from "@/components/loads/LoadInvoicePanel";
 import { getOrgContext } from "@/lib/auth/tenancy";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export default async function EditLoadPage({
       select: {
         id: true,
         referenceNumber: true,
+        status: true,
         customerId: true,
         driverId: true,
         truckId: true,
@@ -35,6 +37,16 @@ export default async function EditLoadPage({
         rateCents: true,
         miles: true,
         notes: true,
+        invoice: {
+          select: {
+            id: true,
+            number: true,
+            status: true,
+            amountCents: true,
+            issuedAt: true,
+            dueAt: true,
+          },
+        },
       },
     }),
     ctx.db.customer.findMany({
@@ -121,6 +133,22 @@ export default async function EditLoadPage({
             ...document,
             createdAt: document.createdAt.toISOString(),
           }))}
+        />
+      </div>
+
+      <div className="mt-6">
+        <LoadInvoicePanel
+          loadId={load.id}
+          loadStatus={load.status}
+          invoice={
+            load.invoice
+              ? {
+                  ...load.invoice,
+                  issuedAt: load.invoice.issuedAt?.toISOString() ?? null,
+                  dueAt: load.invoice.dueAt?.toISOString() ?? null,
+                }
+              : null
+          }
         />
       </div>
     </main>
