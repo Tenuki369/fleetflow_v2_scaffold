@@ -129,7 +129,7 @@ export interface OrgContext {
  * up to a 401/403 response rather than guessing.
  */
 export async function getOrgContext(): Promise<OrgContext> {
-  const { userId: clerkId, orgId: clerkOrgId } = auth();
+  const { userId: clerkId, orgId: clerkOrgId } = await auth();
   if (!clerkId) throw new Error("UNAUTHENTICATED");
 
   const user = await basePrisma.user.findUnique({

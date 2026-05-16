@@ -13,7 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dispatch" className="hover:text-slate-900">Dispatch</Link>
             <Link href="/loads" className="hover:text-slate-900">Loads</Link>
             <Link href="/invoices" className="hover:text-slate-900">Invoices</Link>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </nav>
         </div>
       </header>

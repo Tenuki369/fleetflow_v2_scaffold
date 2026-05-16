@@ -51,9 +51,10 @@ function errorResponse(err: unknown) {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const ctx = await getOrgContext();
     requirePermission(ctx, "update", "load");
 
@@ -65,7 +66,7 @@ export async function PATCH(
       );
     }
 
-    const current = await ctx.db.load.findUnique({ where: { id: params.id } });
+    const current = await ctx.db.load.findUnique({ where: { id } });
     if (!current) {
       return NextResponse.json({ error: "Load not found" }, { status: 404 });
     }
@@ -94,7 +95,7 @@ export async function PATCH(
     }
 
     const updated = await ctx.db.load.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: parsed.data.status },
     });
 
