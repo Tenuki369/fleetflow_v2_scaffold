@@ -1,129 +1,180 @@
-# Staging Release Runbook
+# Vercel Staging Runbook
 
-Use this runbook when promoting FleetFlow to staging or when re-verifying an existing staging deploy.
+Use this runbook when creating the first FleetFlow Vercel preview/staging deployment or when re-verifying an existing one.
 
-## What this covers
+## What this runbook owns
 
-- Safe local checks that do not need live provider credentials.
-- Database migration and optional demo-data steps for staging.
-- Manual smoke coverage against the routes and flows that currently ship.
-- A clear split between what can be proven locally and what still needs real staging credentials.
+- Vercel project setup and deploy settings
+- required environment variables for preview/staging
+- database migration behavior during build
+- post-deploy health and smoke verification
+- rollback posture for staging-only incidents
 
-## Safe commands
+## Local release gate before any deploy
 
-Run these from the repo root:
+Run these from the repo root before touching Vercel:
 
-- `npm run release:preflight` - unit tests, Prisma validation, Prisma client generation, and TypeScript.
-- `npm run release:check` - full preflight plus the production build.
-- `npm run staging:health` - pings `/api/health` on `APP_URL` or `NEXT_PUBLIC_APP_URL`, defaulting to `http://localhost:3000`.
+- `npm run release:preflight` - tests, Prisma validate, Prisma generate, typecheck
+- `npm run release:check` - full preflight plus a production build
 
-## Required staging environment
+Exit rule: do not deploy if `release:check` fails.
 
-Minimum env expected by the deployed app:
+## 1. One-time Vercel project setup
 
-- `DATABASE_URL` - pooled application connection string.
-- `DIRECT_URL` - direct Postgres connection string for Prisma migrations.
-- `NEXT_PUBLIC_APP_URL` - canonical staging URL.
-- Clerk staging keys with Organizations enabled.
-- S3 or R2 staging bucket credentials and bucket name.
-- Stripe staging secret key and webhook signing secret.
+Create or import a Vercel project for this repo with these settings:
 
-## 1. Capture the release candidate
+1. Framework preset: Next.js
+2. Root directory: repo root
+3. Install command: `npm ci`
+4. Build command: `npm run db:deploy && npm run build`
+5. Node.js version: 20 or newer
 
-Before touching staging, record:
+`vercel.json` in the repo now encodes the install and build commands so the dashboard does not need custom drift-prone overrides.
 
-1. Branch name.
-2. Commit SHA.
-3. Target staging URL.
-4. Whether this is a fresh staging database or an existing one.
+## 2. Required preview/staging environment
 
-## 2. Local preflight
+Set these in the Vercel Preview environment before the first smoke run:
 
-1. Confirm the workspace is on the intended branch and commit.
-2. Run `npm install` if dependencies changed.
-3. Run `npm run release:check`.
+### Required for app boot and auth
 
-Exit rule: tests pass, Prisma validates, TypeScript passes, and the production build succeeds locally.
+- `NEXT_PUBLIC_APP_URL`
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`
 
-## 3. Database deploy
+Recommended route values:
 
-### Fresh staging database
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup`
+- `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dispatch`
 
-1. Confirm `DATABASE_URL` and `DIRECT_URL` both point at staging.
-2. Run `npm run db:deploy`.
-3. Only run `npm run db:seed` if staging needs demo records for walkthroughs.
+### Required for document storage
 
-Notes:
+- `AWS_REGION`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `S3_BUCKET`
 
-- `db:seed` is demo data for smoke work. It is not the real first-org bootstrap path.
-- Real operator setup for a fresh org is handled in-app through `/onboarding`.
+Add only when using an S3-compatible endpoint such as R2:
 
-### Existing staging database without Prisma migration history
+- `S3_ENDPOINT`
+- `S3_PUBLIC_URL`
 
-Only use this when the schema is already present and replaying the initial migration would be wrong.
+### Required for invoice and billing checks
 
-1. Take a backup or snapshot first.
-2. Run `npx prisma migrate resolve --applied 20260515120000_init`.
-3. Run `npm run db:deploy`.
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
-## 4. Deployed-app verification
+Optional but recommended:
 
-1. Set `APP_URL` to the staging origin if it differs from `NEXT_PUBLIC_APP_URL`.
-2. Run `npm run staging:health`.
-3. Confirm the response reports `status: "ok"` and `db: "ok"`.
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 
-If health fails, stop here and fix deploy or database connectivity before manual smoke.
+### Optional operational envs
 
-## 5. Manual staging smoke
+- `WEBHOOK_URL`
+- `FLEETFLOW_ENABLE_SENTRY`
+- `SENTRY_DSN`
+- `NEXT_PUBLIC_SENTRY_DSN`
 
-Use a real staging user account. For a brand-new org, start with `/onboarding`; otherwise sign in and land on `/dispatch`.
+Keep optional future-use envs like Neon automation, PostHog, Inngest, Upstash, BetterStack, and Resend out of Vercel until the corresponding feature is actually being exercised.
+
+## 3. Preview URL rule
+
+`NEXT_PUBLIC_APP_URL` must match the deployed staging URL. Do not leave it on `localhost`.
+
+For a branch-based staging flow:
+
+1. trigger the first preview deployment
+2. capture the resulting Vercel preview URL
+3. save that URL into `NEXT_PUBLIC_APP_URL` for the Preview environment
+4. redeploy the branch so health checks and webhook URLs reflect the real host
+
+## 4. Database deployment rule
+
+Vercel runs `npm run db:deploy && npm run build` during build.
+
+That means:
+
+- `DIRECT_URL` must be valid during Vercel build
+- migration history must already be correct for the target database
+- destructive rollback is not part of this path
+
+Use `npm run db:seed` only when staging explicitly needs demo walkthrough data. It is not part of the default deploy.
+
+If the target database already has the schema but is missing Prisma migration history:
+
+1. take a backup first
+2. resolve the baseline migration as applied
+3. rerun the build/deploy path
+
+## 5. Post-deploy verification
+
+After Vercel reports a successful deploy:
+
+1. open `/api/health`
+2. confirm:
+   - `status` is `ok`
+   - `db` is `ok`
+   - `commit` matches the release candidate
+   - `readiness.storage.status` is `ready` unless storage is intentionally not configured
+   - `readiness.stripe.status` is `ready` unless Stripe is intentionally not configured
+3. run `npm run staging:health` locally with `APP_URL` set to the deployed origin if you want a repeatable terminal check
+
+Stop here if health is degraded.
+
+## 6. Manual smoke sequence
+
+Use a real staging user account.
 
 ### Auth and shell
 
-1. Sign in successfully.
-2. For a new org, create the first organization through `/onboarding`.
-3. Confirm the authenticated shell loads and redirects into `/dispatch`.
-4. Confirm top-level navigation works for `/dispatch`, `/loads`, `/directory`, and `/invoices`.
+1. sign in
+2. create the first org through `/onboarding` if this is a fresh staging database
+3. verify redirect to `/dispatch`
+4. verify navigation to `/loads`, `/directory`, and `/invoices`
 
-### Core operational flow
+### Core ops path
 
-1. In `/directory`, create one customer, one driver, and one truck if seed data is not present.
-2. In `/loads/new`, create a load linked to those records.
-3. Open the saved load in `/loads/[id]`.
-4. Edit the load and confirm the update persists.
-5. Move the load through the available status actions until it reaches delivered or invoiced state.
+1. create a customer, driver, and truck in `/directory`
+2. create a load in `/loads/new`
+3. edit that load from the detail page
+4. move the load through its status actions
+5. assign it to the intended driver and truck
 
 ### Invoicing
 
-1. Generate an invoice from a delivered load.
-2. Confirm the invoice appears on the load detail view and in `/invoices`.
-3. Exercise at least one valid invoice status transition, such as draft to sent or sent to paid.
+1. generate an invoice from a delivered load
+2. verify it appears on the load detail page and `/invoices`
+3. move it through a valid status transition such as draft to sent or sent to paid
 
 ### Documents
 
-1. Upload one small PDF or image from the load detail view.
-2. Confirm the upload completes.
-3. Download the uploaded document through the app.
+1. upload one small PDF or image from the load detail page
+2. verify the upload completes
+3. download the same document
 
 ### Negative checks
 
-1. Confirm form validation appears for an obvious bad input, such as a delivery date before pickup.
-2. Confirm duplicate truck unit numbers are rejected within the same org.
-3. Confirm duplicate load reference numbers are rejected within the same org.
+1. delivery date before pickup is rejected
+2. duplicate truck unit number is rejected in-org
+3. duplicate load reference number is rejected in-org
 
-## 6. Credential-gated checks
+## 7. Record the outcome
 
-These still require real staging integrations:
+After each staging verification pass, update `docs/STAGING_SMOKE_RESULTS.md` with:
 
-- Clerk sign-in and organization bootstrap with hosted auth.
-- S3 or R2 presign, upload, and download against the real bucket.
-- Stripe webhook delivery and replay handling against `/api/stripe/webhook`.
-- Production-like callback URLs, bucket permissions, and webhook secrets.
+- date and operator
+- branch and commit
+- preview URL
+- pass/fail by flow
+- any blocking errors and next action
 
-Record the exact date, operator, and result of each of these once a credentialed person runs them.
+## 8. Rollback posture
 
-## 7. Rollback notes
-
-- Application rollback: redeploy the previous known-good build.
-- Database rollback: restore the staging backup taken before `db:deploy`.
-- If `db:seed` was used only for smoke data, remove those records manually unless the migration itself also needs rollback.
+- app rollback: redeploy the previous known-good Vercel deployment
+- database rollback: restore the staging backup taken before a risky migration
+- smoke/demo data rollback: remove seeded records manually if they were only created for staging verification

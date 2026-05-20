@@ -2,7 +2,7 @@
 
 This is the release spine for taking FleetFlow from "feature work in progress" to a production launch that can survive real operations.
 
-For the step-by-step QA execution order, use [docs/QA_RUNBOOK.md](C:\Users\1\Documents\Codex\2026-05-15\i-need-you-to-takeover-this\fleetflow_v2_scaffold\docs\QA_RUNBOOK.md).
+For the step-by-step QA execution order, use `docs/QA_RUNBOOK.md`.
 
 ## Release cadence
 
@@ -92,13 +92,19 @@ Exit rule: a dispatcher can complete the main operational flow without guidance.
 
 ## Gate 5: Staging checkpoints
 
+- Vercel project exists and is linked to the GitHub repo.
+- Vercel build settings match repo-owned config:
+  - install command `npm ci`
+  - build command `npm run db:deploy && npm run build`
 - Production-like env values configured for:
   - Postgres
   - Clerk
   - Stripe
   - storage bucket
+- `NEXT_PUBLIC_APP_URL` matches the real preview or staging URL.
 - Prisma migrations applied successfully.
 - `GET /api/health` returns healthy against the deployed staging URL.
+- `docs/STAGING_SMOKE_RESULTS.md` updated with preview URL, commit SHA, and pass/fail results.
 - First-org onboarding creates an initial org and owner membership safely.
 - Document presign flow tested against real storage.
 - Stripe webhook tested with replay and idempotency.
@@ -132,7 +138,7 @@ Exit rule: there is an owner for launch-day monitoring and a fallback plan if so
   - auth redirect target corrected to `/dispatch`
   - cross-org relationship write validation on load writes
 - In progress:
-  - staging shakeout
+  - Vercel project provisioning and preview shakeout
   - production monitoring
   - credentialed Stripe webhook verification
   - credentialed storage verification

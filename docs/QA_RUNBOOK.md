@@ -1,96 +1,132 @@
-# FleetFlow QA runbook
+# FleetFlow QA Runbook
 
-This runbook is the shortest path to answer one question before launch: "Can an operator use FleetFlow end to end without hitting broken auth, broken data rules, or broken core workflows?"
+This is the operator-facing validation path for a launch candidate. Use it to answer one question: can a real team sign in, create work, move that work through dispatch and billing, and finish without hitting auth, data, or workflow breaks?
 
-## Scope
+For day-of-release coordination, pair this with [LAUNCH_DAY_RUNBOOK.md](./LAUNCH_DAY_RUNBOOK.md). For the release gate summary, use [GO_LIVE_CHECKPOINTS.md](./GO_LIVE_CHECKPOINTS.md).
 
-Use this for every launch candidate on branch or staging builds. It is intentionally narrow:
+## Who runs this
 
-- verify the current automated checks pass
-- run one seeded local workflow pass
-- run one staging smoke pass with real integrations
-- record anything that blocks launch
+- QA or launch owner: drives the run, records results, decides pass or fail
+- Dispatcher proxy: validates the dispatch workflow
+- Accounting proxy: validates invoice state changes
 
-This is not a net-new test plan. It is the executable version of the current launch gate.
+Minimum accounts ready before starting:
 
-## Automated checks
+- `OWNER` user for onboarding and org-level setup
+- `DISPATCHER` user for daily operations
+- `ACCOUNTING` user for invoice actions
+- `DRIVER` user if driver-specific access needs verification
 
-Run these from the repo root in order:
+## Evidence to capture
 
-1. `npm run qa:quick`
-2. `npm run qa:launch`
+Record these for every run:
 
-What they cover today:
+- branch name
+- commit SHA
+- environment name and base URL
+- operator name
+- start time and end time
+- pass or fail for each step
+- exact route, role, and error text for any failure
 
-- `qa:quick`: unit coverage in `tests/` plus Prisma schema validation
-- `qa:launch`: everything in `qa:quick`, then TypeScript no-emit typecheck, Prisma client generation, and the production build
+Use [STAGING_SMOKE_RESULTS.md](./STAGING_SMOKE_RESULTS.md) as the permanent record.
 
-Exit rule: all commands return cleanly with no test, schema, type, or build failures.
+## Preflight
 
-## Local smoke flow
+Do not start the manual run until all of these are true:
 
-Prereqs:
+- `npm run qa:quick` passed
+- `npm run qa:launch` passed
+- target environment is reachable
+- database migrations are applied
+- sign-in works for at least one known user
+- storage credentials exist if document upload is in scope
+- Stripe credentials and webhook secret exist if invoice lifecycle is in scope
 
-- local env file present
-- database reachable
-- Prisma migrations applied
-- representative seed data loaded, or enough records to create one customer, truck, driver, and load
+Stop immediately if any preflight item fails.
 
-Suggested setup order:
+## Test data to use
 
-1. `npm run db:deploy`
-2. `npm run db:seed` if a safe local seed path is available for your environment
-3. `npm run dev`
+Use one clean set of values so the run is easy to replay and audit:
 
-Run this workflow in the browser:
+- customer: `Launch Test Logistics`
+- truck: `FF-9001`
+- driver: `Taylor Launch`
+- load reference: `LAUNCH-001`
+- invoice amount: use the load's generated value
+- document type: `BOL`, then `POD` if running a second upload
 
-1. Sign in as an `OWNER` or `DISPATCHER`.
-2. Open `/dispatch` and confirm the page loads without redirect loops or blank states.
-3. Create a customer in `/directory`.
-4. Create a truck in `/directory`.
-5. Create a driver and assign the truck.
-6. Create a load in `/loads/new` using the customer, truck, and driver.
-7. Open the new load detail page and edit at least one field.
-8. Move the load through the expected status flow.
-9. Confirm invoice visibility from the load or `/invoices`.
-10. Upload or validate one load document if storage is configured locally.
+If those values already exist in the same org, append the date or a short suffix.
 
-Check these while you move through the flow:
+## Manual validation flow
 
-- no unexpected 500s in the app or API responses
-- validation errors appear for obviously bad form input
-- org-scoped records do not leak across users or routes
-- laptop-width table layouts remain readable
-- core navigation between `/dispatch`, `/loads`, `/directory`, and `/invoices` stays intact
+Run the steps in this exact order.
 
-Exit rule: the dispatcher flow completes without guidance or data corruption.
+| Step | Role | Route | Action | Expected result |
+| --- | --- | --- | --- | --- |
+| 1 | `OWNER` | `/onboarding` or sign-in entry | Sign in and create the first org if the account has no membership | User lands in `/dispatch` with an owner membership and no redirect loop |
+| 2 | `OWNER` | `/dispatch` | Verify the shell loads | Navigation to `/dispatch`, `/loads`, `/directory`, and `/invoices` works |
+| 3 | `DISPATCHER` | `/directory` | Create customer `Launch Test Logistics` | Customer saves once, appears in the list, and does not duplicate unexpectedly |
+| 4 | `DISPATCHER` | `/directory` | Create truck `FF-9001` | Truck saves once and appears in the truck list |
+| 5 | `DISPATCHER` | `/directory` | Create driver `Taylor Launch` and assign truck `FF-9001` | Driver saves, assigned truck persists, no cross-org validation errors |
+| 6 | `DISPATCHER` | `/loads/new` | Create load `LAUNCH-001` using the test customer, driver, and truck | Load saves, opens its detail page, and shows the linked records |
+| 7 | `DISPATCHER` | `/loads/[id]` | Edit one non-critical field such as notes, rate, or appointment time | Change persists after refresh |
+| 8 | `DISPATCHER` | `/loads/[id]` | Move the load through valid status actions until delivered | Only legal next states are available, and the selected state persists |
+| 9 | `DISPATCHER` | `/loads/[id]` | Upload one `BOL` document | Upload finishes, document appears in the list, and the document type badge is correct |
+| 10 | `DISPATCHER` | `/loads/[id]` | Download the uploaded document | Download opens or redirects cleanly with no 401, 403, or 500 |
+| 11 | `ACCOUNTING` | `/loads/[id]` or `/invoices` | Generate the invoice from the delivered load | Invoice is created once and appears in both the load view and invoice list |
+| 12 | `ACCOUNTING` | `/invoices` | Move the invoice through one valid lifecycle path: `DRAFT -> SENT -> PAID` | Each transition succeeds once, timestamps update, and invalid reopen actions are unavailable |
+| 13 | `DRIVER` | assigned load route or status action surface | Confirm the assigned driver can only act on the assigned load | Assigned load is accessible; unrelated loads are not actionable |
 
-## Staging smoke flow
+## Negative checks
 
-These steps stay manual because they depend on real services and environment wiring:
+Run these after the happy path while still in the same org:
 
-1. Confirm staging env values are set for Postgres, Clerk, Stripe, and storage.
-2. Apply Prisma migrations on staging.
-3. Verify sign-in and redirect behavior for the first real org.
-4. Repeat the local smoke flow on staging.
-5. Test document presign/upload against the real bucket.
-6. Replay a Stripe webhook and confirm idempotent handling.
-7. Hit `/api/health` and spot-check the core load/customer/driver/truck endpoints for non-500 behavior.
+| Check | Where | Input | Expected result |
+| --- | --- | --- | --- |
+| Invalid delivery date | `/loads/new` or `/loads/[id]` | Set delivery before pickup | UI or API rejects the change |
+| Duplicate truck | `/directory` | Create `FF-9001` again | Duplicate is blocked in the same org |
+| Duplicate load reference | `/loads/new` | Create `LAUNCH-001` again | Duplicate is blocked in the same org |
+| Invalid document type or unsupported file | document upload | Upload unsupported file or bad type selection | Upload is rejected without breaking the page |
+| Illegal invoice transition | `/invoices` | Try to reopen `PAID` or `VOID` | Action is blocked |
 
-Exit rule: staging behaves like production, including auth, storage, and billing integrations.
+## What to watch during the run
 
-## Failure handling
+Treat any of these as a launch blocker:
 
-If a check fails:
+- sign-in failure or redirect loop
+- missing org membership after onboarding
+- data saved to the wrong org
+- unexpected 500 response
+- document upload completes without a saved record
+- invoice generates twice from one load
+- driver can act on another driver's load
+- broken navigation between core views
 
-1. capture the failing command, route, role, and exact repro steps
-2. mark whether the issue is local-only, staging-only, or both
-3. stop the launch recommendation for any auth, data integrity, billing, storage, or 500-level regression
+Treat these as high-priority but not automatic launch blockers unless they stop the workflow:
 
-## Launch recommendation
+- unreadable tables at laptop width
+- copy that hides the next action
+- validation messages that are technically correct but unclear
+- slow page transitions that exceed a normal operator wait
 
-Recommend go-live only when all three are true:
+## Pass and fail rules
 
-1. `npm run qa:launch` passes locally
-2. the manual local smoke flow passes once cleanly
-3. the staging smoke flow passes with real integrations
+Pass only when all of these are true:
+
+- every step in the manual validation flow completes
+- every negative check behaves correctly
+- no auth, tenant, billing, storage, or 500-level issue appears
+- the operator can move through the run without extra engineering guidance
+
+Fail immediately if any core flow cannot be completed or if any blocker above appears.
+
+## Reporting
+
+At the end of the run, update [STAGING_SMOKE_RESULTS.md](./STAGING_SMOKE_RESULTS.md) with:
+
+- verified commit SHA
+- environment URL
+- timestamped pass or fail per step
+- failures with exact repro and visible error text
+- final recommendation: go live, hold for fixes, or rerun after env repair

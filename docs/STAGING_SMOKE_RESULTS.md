@@ -1,12 +1,16 @@
 # Staging Smoke Results
 
-- Date: 2026-05-16
+- Latest update: 2026-05-20
 - Branch: `codex/merge-fleetflow-handoff`
-- Commit: `0e3d8df1a34cd299325714868c195b96803f7ef1`
+- Latest verified commit: `0e3d8df1a34cd299325714868c195b96803f7ef1`
 - Draft PR: https://github.com/Tenuki369/fleetflow_v2_scaffold/pull/1
 - Target platform: Vercel
 - Preview URL: not created yet
 - Overall status: blocked before deployment
+
+## Current blocker snapshot
+
+No Vercel project has been provisioned for this repo yet, so there is still no preview URL to run smoke against. This file should remain the source of truth until a real preview deployment exists.
 
 ## What was verified
 
@@ -83,9 +87,9 @@ These are the non-secret keys that must exist before smoke can run cleanly on Ve
   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - Optional operational keys:
   - `WEBHOOK_URL`
+  - `FLEETFLOW_ENABLE_SENTRY`
   - `SENTRY_DSN`
   - `NEXT_PUBLIC_SENTRY_DSN`
-  - `FLEETFLOW_ENABLE_SENTRY`
 
 Note: the app uses Clerk, not NextAuth. `NEXTAUTH_URL` and `NEXTAUTH_SECRET` are not part of this codepath.
 
@@ -93,8 +97,23 @@ Note: the app uses Clerk, not NextAuth. `NEXTAUTH_URL` and `NEXTAUTH_SECRET` are
 
 1. Create or import a Vercel project for `Tenuki369/fleetflow_v2_scaffold` named `fleetflow-v2`.
 2. Add the required preview environment variables above.
-3. Set the Vercel build command to run migrations before `next build`, for example:
-   - `npm run db:deploy && npm run build`
+3. Confirm the Vercel build command is `npm run db:deploy && npm run build` as encoded in `vercel.json`.
 4. Trigger a preview deployment from `codex/merge-fleetflow-handoff`.
 5. Re-run the five smoke flows in `docs/STAGING_RUNBOOK.md` and append the actual preview URL, timestamps, and pass/fail results here.
-Staging trigger
+
+## Result template for the first real preview deploy
+
+Fill this in once a real Vercel preview exists:
+
+| Field | Value |
+| --- | --- |
+| Date |  |
+| Operator |  |
+| Preview URL |  |
+| Commit |  |
+| `/api/health` |  |
+| Onboarding |  |
+| Document upload |  |
+| Invoice lifecycle |  |
+| Dispatch assignment |  |
+| Blockers |  |
