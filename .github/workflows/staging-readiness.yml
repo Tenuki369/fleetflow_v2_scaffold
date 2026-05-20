@@ -1,0 +1,63 @@
+name: Staging Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Preview or staging URL to verify"
+        required: true
+        type: string
+      require_ready:
+        description: "Fail if health readiness checks are not fully ready"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: staging-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+  NEXT_TELEMETRY_DISABLED: '1'
+  APP_URL: ${{ inputs.app_url }}
+  NEXT_PUBLIC_APP_URL: ${{ inputs.app_url }}
+  DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+  DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.STAGING_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+  CLERK_SECRET_KEY: ${{ secrets.STAGING_CLERK_SECRET_KEY }}
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${{ vars.STAGING_CLERK_SIGN_IN_URL || '/login' }}
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${{ vars.STAGING_CLERK_SIGN_UP_URL || '/signup' }}
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: ${{ vars.STAGING_CLERK_AFTER_SIGN_IN_URL || '/dispatch' }}
+  STRIPE_SECRET_KEY: ${{ secrets.STAGING_STRIPE_SECRET_KEY }}
+  STRIPE_WEBHOOK_SECRET: ${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ vars.STAGING_AWS_REGION || 'auto' }}
+  S3_BUCKET: ${{ vars.STAGING_S3_BUCKET }}
+  S3_ENDPOINT: ${{ vars.STAGING_S3_ENDPOINT }}
+  S3_PUBLIC_URL: ${{ vars.STAGING_S3_PUBLIC_URL }}
+
+jobs:
+  readiness:
+    name: Validate env + health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Validate workflow commands
+        run: npm run ci:workflow-guard
+      - name: Validate staging env contract
+        run: npm run staging:readiness
+      - name: Probe health endpoint
+        run: |
+          if [[ "${{ inputs.require_ready }}" == "true" ]]; then
+            npm run staging:health -- --require-ready
+          else
+            npm run staging:health
+          fi

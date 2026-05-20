@@ -9,6 +9,7 @@
     "test": "npm run test:unit",
     "test:unit": "vitest run",
     "lint": "next lint",
+    "ci:workflow-guard": "node scripts/validate-workflow-scripts.mjs",
     "typecheck": "npm exec tsc -- --noEmit",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -19,7 +20,8 @@
     "qa:quick": "npm run release:preflight",
     "qa:launch": "npm run qa:quick && npm run build",
     "release:check": "npm run qa:launch",
-    "staging:health": "node -e \"const base=process.env.APP_URL||process.env.NEXT_PUBLIC_APP_URL||'http://localhost:3000';const url=new URL('/api/health', base);fetch(url).then(async (res)=>{const body=await res.text();if(!res.ok){console.error(body);process.exit(1);}console.log(body);}).catch((err)=>{console.error(err);process.exit(1);});\""
+    "staging:readiness": "node scripts/staging-readiness.mjs --mode=staging",
+    "staging:health": "node scripts/staging-health-check.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1048.0",
