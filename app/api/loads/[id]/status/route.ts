@@ -3,6 +3,7 @@ import { z } from "zod";
 import { LoadStatus } from "@prisma/client";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { requirePermission, ForbiddenError } from "@/lib/auth/rbac";
+import { canUpdateAssignedLoadAsDriver } from "@/lib/drivers";
 
 // State machine. Forward transitions follow the lifecycle; back-transitions
 // exist for legitimate dispatcher corrections but you can't un-invoice a load.
@@ -51,9 +52,10 @@ function errorResponse(err: unknown) {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const ctx = await getOrgContext();
     requirePermission(ctx, "update", "load");
 
@@ -65,17 +67,25 @@ export async function PATCH(
       );
     }
 
-    const current = await ctx.db.load.findUnique({ where: { id: params.id } });
+    const current = await ctx.db.load.findUnique({
+      where: { id },
+      include: {
+        driver: { select: { userId: true } },
+      },
+    });
     if (!current) {
       return NextResponse.json({ error: "Load not found" }, { status: 404 });
     }
 
-    // Drivers can only move their own loads, and only forward.
+    // Drivers can only move loads assigned to their linked driver profile.
     if (ctx.role === "DRIVER") {
-      const driver = await ctx.db.driver.findFirst({
-        where: { id: current.driverId ?? "" },
-      });
-      if (!driver) {
+      if (
+        !canUpdateAssignedLoadAsDriver({
+          role: ctx.role,
+          currentUserId: ctx.userId,
+          assignedDriverUserId: current.driver?.userId,
+        })
+      ) {
         return NextResponse.json({ error: "Not your load" }, { status: 403 });
       }
     }
@@ -94,12 +104,13 @@ export async function PATCH(
     }
 
     const updated = await ctx.db.load.update({
-      where: { id: params.id },
+      where: { id },
       data: { status: parsed.data.status },
     });
 
     await ctx.db.auditLog.create({
       data: {
+        orgId: ctx.orgId,
         userId: ctx.userId,
         entityType: "Load",
         entityId: updated.id,

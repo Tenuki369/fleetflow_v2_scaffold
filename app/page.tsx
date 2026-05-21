@@ -1,6 +1,31 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import { getOrgContext } from "@/lib/auth/tenancy";
+import { getDemoSession, isDemoAccessEnabled } from "@/lib/demo-access";
+
+export default async function Home() {
+  const demoSession = await getDemoSession();
+  if (demoSession) {
+    redirect("/dispatch");
+  }
+
+  const { userId } = await auth();
+
+  if (userId) {
+    try {
+      await getOrgContext();
+      redirect("/dispatch");
+    } catch (error) {
+      if (error instanceof Error && error.message === "NO_MEMBERSHIP") {
+        redirect("/onboarding");
+      }
+
+      throw error;
+    }
+  }
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-24">
       <h1 className="text-4xl font-bold tracking-tight">FleetFlow TMS</h1>
@@ -20,6 +45,20 @@ export default function Home() {
         >
           Create account
         </Link>
+        <Link
+          href="/v2"
+          className="rounded-lg border border-blue-300 bg-blue-50 px-5 py-2.5 font-medium text-blue-700"
+        >
+          View V2 demo
+        </Link>
+        {isDemoAccessEnabled() ? (
+          <Link
+            href="/demo"
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-5 py-2.5 font-medium text-emerald-700"
+          >
+            Enter demo workspace
+          </Link>
+        ) : null}
       </div>
     </main>
   );

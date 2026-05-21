@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { getOrgContext } from "@/lib/auth/tenancy";
 import { requirePermission, ForbiddenError } from "@/lib/auth/rbac";
 import { createUploadUrl } from "@/lib/storage/documents";
+import { documentUploadIntentSchema } from "@/lib/documents";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -13,19 +13,12 @@ const ALLOWED_MIME = new Set([
   "application/pdf",
 ]);
 
-const bodySchema = z.object({
-  loadId: z.string().cuid(),
-  fileName: z.string().min(1).max(256),
-  mimeType: z.string(),
-  sizeBytes: z.number().int().positive().max(25 * 1024 * 1024),
-});
-
 export async function POST(req: NextRequest) {
   try {
     const ctx = await getOrgContext();
     requirePermission(ctx, "update", "load");
 
-    const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+    const parsed = documentUploadIntentSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid body", details: parsed.error.flatten() },

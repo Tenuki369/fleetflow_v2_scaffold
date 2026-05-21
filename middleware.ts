@@ -1,23 +1,31 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Public routes — everything else requires an authenticated user.
+import { DEMO_SESSION_COOKIE, isDemoAccessEnabled, parseDemoPersona } from "@/lib/demo-access";
+
 const isPublicRoute = createRouteMatcher([
   "/",
+  "/demo(.*)",
+  "/v2(.*)",
   "/login(.*)",
   "/signup(.*)",
   "/legal/(.*)",
+  "/api/demo/session",
   "/api/health",
   "/api/stripe/webhook",
 ]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
+  const demoPersona = parseDemoPersona(req.cookies.get(DEMO_SESSION_COOKIE)?.value);
+  if (demoPersona && isDemoAccessEnabled()) {
+    return;
+  }
+
   if (!isPublicRoute(req)) {
-    auth().protect();
+    await auth.protect();
   }
 });
 
 export const config = {
-  // Run on everything except static assets and Next internals.
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js)).*)",
     "/(api|trpc)(.*)",

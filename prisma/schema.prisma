@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -71,6 +72,7 @@ model User {
 
   memberships Membership[]
   auditLogs   AuditLog[]
+  drivers     Driver[]
 }
 
 model Membership {
@@ -110,6 +112,7 @@ model Customer {
 model Driver {
   id            String   @id @default(cuid())
   orgId         String
+  userId        String?
   firstName     String
   lastName      String
   email         String?
@@ -120,12 +123,14 @@ model Driver {
   updatedAt     DateTime @updatedAt
 
   org     Org     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   loads   Load[]
   truck   Truck?  @relation(fields: [truckId], references: [id])
   truckId String?
 
   @@index([orgId, createdAt])
   @@index([orgId, active])
+  @@unique([orgId, userId])
 }
 
 model Truck {
@@ -250,4 +255,3 @@ model StripeEvent {
   id        String   @id
   createdAt DateTime @default(now())
 }
-
