@@ -3,8 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { getOrgContext } from "@/lib/auth/tenancy";
+import { getDemoSession, isDemoAccessEnabled } from "@/lib/demo-access";
 
 export default async function Home() {
+  const demoSession = await getDemoSession();
+  if (demoSession) {
+    redirect("/dispatch");
+  }
+
   const { userId } = await auth();
 
   if (userId) {
@@ -45,6 +51,14 @@ export default async function Home() {
         >
           View V2 demo
         </Link>
+        {isDemoAccessEnabled() ? (
+          <Link
+            href="/demo"
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-5 py-2.5 font-medium text-emerald-700"
+          >
+            Enter demo workspace
+          </Link>
+        ) : null}
       </div>
     </main>
   );

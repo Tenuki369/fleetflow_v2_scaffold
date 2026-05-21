@@ -1,5 +1,8 @@
-import { Prisma, PrismaClient, Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 import { auth, currentUser } from "@clerk/nextjs/server";
+
+import { getDemoOrgContext } from "../demo-access";
+import { basePrisma } from "../db";
 
 // Models that carry orgId. Anything not in this set is treated as global
 // (e.g. User) and is NOT auto-scoped. Mistakes here are dangerous, so the
@@ -15,10 +18,6 @@ const TENANT_MODELS = new Set<string>([
   "Invoice",
   "AuditLog",
 ]);
-
-const basePrisma = new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
-});
 
 type WhereArg = { where?: Record<string, unknown> } & Record<string, unknown>;
 
@@ -130,7 +129,11 @@ export interface OrgContext {
  */
 export async function getOrgContext(): Promise<OrgContext> {
   const { userId: clerkId, orgId: clerkOrgId } = await auth();
-  if (!clerkId) throw new Error("UNAUTHENTICATED");
+  if (!clerkId) {
+    const demoContext = await getDemoOrgContext();
+    if (demoContext) return demoContext;
+    throw new Error("UNAUTHENTICATED");
+  }
 
   const user = await basePrisma.user.findUnique({
     where: { clerkId },
