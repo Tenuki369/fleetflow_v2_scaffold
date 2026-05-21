@@ -39,6 +39,12 @@ export default async function Home() {
         >
           Create account
         </Link>
+        <Link
+          href="/v2"
+          className="rounded-lg border border-blue-300 bg-blue-50 px-5 py-2.5 font-medium text-blue-700"
+        >
+          View V2 demo
+        </Link>
       </div>
     </main>
   );
