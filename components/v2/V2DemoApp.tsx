@@ -19,7 +19,7 @@ import {
   type DemoTruck,
 } from "@/lib/v2-demo";
 
-type ViewKey = "dispatch" | "match" | "fleet" | "alerts";
+export type ViewKey = "dispatch" | "match" | "fleet" | "alerts";
 
 const viewCopy: Record<
   ViewKey,
@@ -60,6 +60,16 @@ const viewTabs: Array<{ key: ViewKey; label: string; badge?: string }> = [
   { key: "fleet", label: "Fleet" },
   { key: "alerts", label: "Alerts", badge: "5" },
 ];
+
+type V2DemoAppProps = {
+  initialView?: ViewKey;
+  homeHref?: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+  badgeLabel?: string;
+  orgLabel?: string;
+  routeLinks?: Partial<Record<ViewKey, string>>;
+};
 
 function formatMoney(cents: number) {
   return (cents / 100).toLocaleString("en-US", {
@@ -526,8 +536,16 @@ function AlertsView() {
   );
 }
 
-export function V2DemoApp() {
-  const [view, setView] = useState<ViewKey>("dispatch");
+export function V2DemoApp({
+  initialView = "dispatch",
+  homeHref = "/",
+  secondaryHref = "/dispatch",
+  secondaryLabel = "Open current scaffold",
+  badgeLabel = "V2 demo",
+  orgLabel = "Northshore Trucking . 22 Trucks",
+  routeLinks,
+}: V2DemoAppProps) {
+  const [view, setView] = useState<ViewKey>(initialView);
   const copy = viewCopy[view];
 
   return (
@@ -536,34 +554,53 @@ export function V2DemoApp() {
         <header className="border-b border-stone-300 pb-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-5">
-              <Link href="/" className="text-3xl font-semibold tracking-tight text-stone-950">
+              <Link href={homeHref} className="text-3xl font-semibold tracking-tight text-stone-950">
                 FleetFlow
               </Link>
               <div className="hidden text-xs uppercase tracking-[0.34em] text-stone-400 md:block">
-                Northshore Trucking . 22 Trucks
+                {orgLabel}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-stone-600">
               {viewTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setView(tab.key)}
-                  className={`rounded-full px-3 py-2 transition ${
-                    view === tab.key
-                      ? "bg-stone-900 text-white"
-                      : "bg-white/70 text-stone-700 ring-1 ring-inset ring-stone-200"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {tab.badge ? (
-                    <span className="ml-2 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800">
-                      {tab.badge}
-                    </span>
-                  ) : null}
-                </button>
+                routeLinks?.[tab.key] ? (
+                  <Link
+                    key={tab.key}
+                    href={routeLinks[tab.key]!}
+                    className={`rounded-full px-3 py-2 transition ${
+                      view === tab.key
+                        ? "bg-stone-900 text-white"
+                        : "bg-white/70 text-stone-700 ring-1 ring-inset ring-stone-200"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.badge ? (
+                      <span className="ml-2 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        {tab.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                ) : (
+                  <button
+                    key={tab.key}
+                    onClick={() => setView(tab.key)}
+                    className={`rounded-full px-3 py-2 transition ${
+                      view === tab.key
+                        ? "bg-stone-900 text-white"
+                        : "bg-white/70 text-stone-700 ring-1 ring-inset ring-stone-200"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.badge ? (
+                      <span className="ml-2 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        {tab.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                )
               ))}
               <span className="ml-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-blue-700">
-                V2 demo
+                {badgeLabel}
               </span>
             </div>
           </div>
@@ -582,12 +619,14 @@ export function V2DemoApp() {
                   {copy.cta}
                 </button>
               ) : null}
-              <Link
-                href="/dispatch"
-                className="rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900"
-              >
-                Open current scaffold
-              </Link>
+              {secondaryHref ? (
+                <Link
+                  href={secondaryHref}
+                  className="rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-medium text-stone-900"
+                >
+                  {secondaryLabel}
+                </Link>
+              ) : null}
             </div>
           </div>
         </section>

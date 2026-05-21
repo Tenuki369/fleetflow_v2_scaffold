@@ -7,13 +7,13 @@ const routeLinks = {
   alerts: "/alerts",
 } as const;
 
-export default function DispatchPage() {
+export default function AlertsPage() {
   return (
     <V2DemoApp
-      initialView="dispatch"
+      initialView="alerts"
       homeHref="/dispatch"
-      secondaryHref="/loads"
-      secondaryLabel="Open load workspace"
+      secondaryHref="/invoices"
+      secondaryLabel="Open invoice queue"
       badgeLabel="V2 workspace"
       routeLinks={routeLinks}
     />
